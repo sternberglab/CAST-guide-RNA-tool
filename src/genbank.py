@@ -7,7 +7,7 @@ from Bio import Entrez, SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 
-from bowtie import build
+from src.bowtie import build
 
 
 def get_from_cache(genbankId):
@@ -41,6 +41,7 @@ def retrieve_annotation(genbankId, email):
 
 	cached = get_from_cache(genbankId)
 	if cached:
+		save_to_cache(genbankId, cached)
 		return cached	
 	"""
 	Annotates Entrez Gene IDs using Bio.Entrez, in particular epost (to

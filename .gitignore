@@ -1,0 +1,4 @@
+*.txt
+*.csv
+__pycache__
+assets/

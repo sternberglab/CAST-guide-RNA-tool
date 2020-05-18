@@ -7,10 +7,10 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-from genbank import retrieve_annotation, get_genes
-from finder import get_target_region_for_gene, get_candidates_for_region, remove_offtarget_matches
-from outputs import make_spacer_gen_output, make_eval_outputs
-from bowtie import find_offtargets
+from src.genbank import retrieve_annotation, get_genes
+from src.finder import get_target_region_for_gene, get_candidates_for_region, remove_offtarget_matches
+from src.outputs import make_spacer_gen_output, make_eval_outputs
+from src.bowtie import find_offtargets
 
 
 def spacer_gen(args):
@@ -51,15 +51,17 @@ def spacer_gen(args):
 	print("done")
 
 def spacer_eval(args):
-	print("Starting spacer search...")
 	genbankId = args['genbankId']
-	downloadsPath = args['downloadsPath']
+	outputPath = args['outputPath']
 	email = args['email']
-	spacers = args['spacers']
+	user_spacers = args['spacers']
+
 	genbank_info = retrieve_annotation(genbankId, email)
 	all_genes = get_genes(genbank_info)
 	genome = Seq(genbank_info['GBSeq_sequence'])
 	
+	spacers = [s for s in user_spacers if len(s) == 32]
+	print(f"Starting evaluation for {len(spacers)} valid spacers...")
 	spacer_batch = []
 	for (index, spacer) in enumerate(spacers):
 		flexible_seq = spacer[:]
@@ -76,7 +78,7 @@ def spacer_eval(args):
 		SeqIO.write(spacer_batch, targets_file, 'fasta')
 
 	output_location = find_offtargets(genbankId, fasta_name)
-	make_eval_outputs(spacer_batch, output_location, genome, downloadsPath)
+	make_eval_outputs(spacer_batch, output_location, genome, outputPath)
 
 	os.remove(fasta_name)
 	os.remove(output_location)

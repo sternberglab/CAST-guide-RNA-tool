@@ -10,7 +10,7 @@ from pathlib import Path
 
 from simplesam import Reader as samReader
 
-from bowtie import find_offtargets
+from src.bowtie import find_offtargets
 
 SPACER_LENGTH = 32
 PAM_SEQ = 'CC'
