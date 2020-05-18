@@ -1,14 +1,10 @@
-from Bio import SeqIO, SeqRecord, Seq
-import subprocess
-import sys
-from simplesam import Reader as samReader
-import tempfile
 import os
 import csv
-import time
-import multiprocessing
 from collections import Counter
 from pathlib import Path
+
+from Bio import SeqIO, SeqRecord, Seq
+from simplesam import Reader as samReader
 
 def make_spacer_gen_output(regions, output_filename):
 	fieldnames = ['spacer_id', 'region', 'sequence', 'genomic_coordinate', 'GC_content', 'PAM', 'strand']

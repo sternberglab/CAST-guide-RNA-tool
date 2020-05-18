@@ -1,17 +1,20 @@
 import json
 import time
 import os
+from pathlib import Path
+
 from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
+
 from genbank import retrieve_annotation, get_genes
 from finder import get_target_region_for_gene, get_candidates_for_region, remove_offtarget_matches
 from outputs import make_spacer_gen_output, make_eval_outputs
 from bowtie import find_offtargets
-from pathlib import Path
+
 
 def spacer_gen(args):
-	print("Starting spacer search...", flush=True)
+	print("Starting spacer search...")
 	email = args['email']
 	outputPath = args['outputPath']
 	genbankId = args['genbankId']
@@ -28,8 +31,8 @@ def spacer_gen(args):
 
 	for gene in target_genes:
 		start = time.perf_counter()
-		print(gene['name'], flush=True)
-		print(f"Finding crRNA for \"{gene['name']}\"", flush=True)
+		print(gene['name'])
+		print(f"Finding crRNA for \"{gene['name']}\"")
 		[start_mark, end_mark] = get_target_region_for_gene(gene, startPct, endPct)
 		
 		candidates = get_candidates_for_region(genome, start_mark, end_mark, gene['name'])
@@ -43,12 +46,12 @@ def spacer_gen(args):
 			gene['candidates'] = candidates[:spacersPerRegion]
 
 		elapsed_time = round(time.perf_counter() - start, 2)
-		print(f"Identified {len(candidates)} spacers for {gene['name']} in {elapsed_time}", flush=True)
+		print(f"Identified {len(candidates)} spacers for {gene['name']} in {elapsed_time}")
 	make_spacer_gen_output(target_genes, os.path.join(outputPath, 'spacer_gen_output'))
-	print("done", flush=True)
+	print("done")
 
 def spacer_eval(args):
-	print("Starting spacer search...", flush=True)
+	print("Starting spacer search...")
 	genbankId = args['genbankId']
 	downloadsPath = args['downloadsPath']
 	email = args['email']
@@ -77,4 +80,3 @@ def spacer_eval(args):
 
 	os.remove(fasta_name)
 	os.remove(output_location)
-	print("done", flush=True)

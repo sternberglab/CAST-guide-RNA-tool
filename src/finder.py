@@ -1,7 +1,5 @@
-from Bio import SeqIO, SeqRecord, Seq
 import subprocess
 import sys
-from simplesam import Reader as samReader
 import tempfile
 import os
 import csv
@@ -10,8 +8,10 @@ import multiprocessing
 from collections import Counter
 from pathlib import Path
 
+from simplesam import Reader as samReader
+
 from bowtie import find_offtargets
-#from parameters import run_mode, spacer_list, mismatch_threshold, refseq_path, PAM_SEQ, SPACER_LENGTH, INTEGRATION_SITE_DISTANCE, GENOME_NAME, output_path
+
 SPACER_LENGTH = 32
 PAM_SEQ = 'CC'
 INTEGRATION_SITE_DISTANCE = 49

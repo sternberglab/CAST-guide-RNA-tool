@@ -1,11 +1,14 @@
-from Bio import Entrez, SeqIO
-from Bio.SeqRecord import SeqRecord
-from Bio.Seq import Seq
 import sys
 import json
 import os
 from pathlib import Path
+
+from Bio import Entrez, SeqIO
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
+
 from bowtie import build
+
 
 def get_from_cache(genbankId):
 	root_dir = Path(__file__).parent.parent
@@ -31,7 +34,6 @@ def save_to_cache(genbankId, genbank_info):
 		seqrec = SeqRecord(Seq(genbank_info['GBSeq_sequence']), id=genbankId, name=genbankId, description=genbankId)
 		SeqIO.write(seqrec, f, 'fasta')
 	build(genbankId)
-	print("saved to cache", flush=True)
 
 def retrieve_annotation(genbankId, email):
 	# *Always* tell NCBI who you are
@@ -45,7 +47,7 @@ def retrieve_annotation(genbankId, email):
 	submit the data to NCBI) and esummary to retrieve the information.
 	Returns a list of dictionaries with the annotations.
 	"""
-	print(f"Fetching genbank info for {genbankId}", flush=True)
+	print(f"Fetching genbank info for {genbankId}")
 	handle = Entrez.efetch("nucleotide", id=genbankId, retmode="xml")
 	try:
 		result = Entrez.read(handle)[0]
