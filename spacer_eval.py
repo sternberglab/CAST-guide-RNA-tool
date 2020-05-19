@@ -3,7 +3,7 @@ from src.main import spacer_eval
 # Folder to put outputs in
 # Can be relative or absolute
 # Ex. 'C:\\Users\\Me\\Downloads', '../../Downloads'
-outputPath = './'
+outputPath = ''
 
 # Genbank Accession number
 # Ex. "CP001509.3"
@@ -14,9 +14,8 @@ email = ''
 
 # List of spacers to evaluate for off-target matches
 # Each must be 32 basepairs in length, invalid lengths will be filtered out
-spacers = ['AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA']
-
-
+# Ex: =['AAAAATAAAAACAAAAAATAAAACAAAAAGTT', 'GGCGATAAAAACATTTAATAAAACAAAAAGTT']
+spacers = []
 
 
 

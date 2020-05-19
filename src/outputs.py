@@ -6,6 +6,8 @@ from pathlib import Path
 from Bio import SeqIO, SeqRecord, Seq
 from simplesam import Reader as samReader
 
+from src.advanced_parameters import PAM_SEQ
+
 def make_spacer_gen_output(regions, output_filename):
 	fieldnames = ['spacer_id', 'region', 'sequence', 'genomic_coordinate', 'GC_content', 'PAM', 'strand']
 	gc_counter = Counter(['G', 'C'])
@@ -23,12 +25,12 @@ def make_spacer_gen_output(regions, output_filename):
 
 					row = {
 						'spacer_id': spacer_id,
-						'region': region['name'],
+						'region': f"{region['name']} - ({region['start']}-{region['end']})",
 						'sequence': c['seqrec'].seq, 
 						'genomic_coordinate': c['location'],
 						'GC_content': GC_content,
-						'PAM': 'CC',
-						'strand': c['name'].split('--')[1]
+						'PAM': PAM_SEQ,
+						'strand': c['name'].split('--')[1][:2]
 					}
 					writer.writerow(row)
 					spacer_id += 1
@@ -51,7 +53,7 @@ def make_eval_outputs(spacers, output_sam, genome, output_path):
 			spacer_loc = reads[0].coords[0] if reads[0].reverse else reads[0].coords[-1]
 
 		elif len(reads) > 1:
-			print(f"Spacer '{spacer.id}' has {len(reads)} potential off-targets - see output files for details")
+			print(f"Spacer '{spacer.id}' has {len(reads)-1} potential off-targets - see output files for details")
 			with open(os.path.join(output_path, f'crrna_{spacer.id}_off_target.txt'), 'w') as log:
 				log.write(f"Potential off-target sites for {spacer.id}")
 				log.write("\n(Top row is spacer sequence, following rows are potential off-targets; closest matches listed first)")

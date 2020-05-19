@@ -8,7 +8,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 
 from src.bowtie import build
-
+from src.advanced_parameters import minimum_intergenic_region_length
 
 def get_from_cache(genbankId):
 	root_dir = Path(__file__).parent.parent
@@ -75,6 +75,31 @@ def basic_gene_info(gene):
 		"direction": direction
 	}
 
-def get_genes(annotation_result):
+def get_noncoding_regions_from_genes(genes, genome):
+	genome_end = len(genome)
+	noncoding_regions = []
+	
+	gene_index = 0
+	prev_gene = {'end': -1}
+	while gene_index < len(genes):
+		next_gene = genes[gene_index]
+		if (int(next_gene['start']) - int(prev_gene['end'])) > minimum_intergenic_region_length:
+			new_region = {
+				'name': 'noncoding_'+str(len(noncoding_regions)+1),
+				'start': int(prev_gene['end'])+1,
+				'end': int(next_gene['start'])-1,
+				'direction': 'fw'
+			}
+			noncoding_regions.append(new_region)
+		prev_gene = next_gene
+		gene_index += 1
+	return noncoding_regions
+
+def get_regions(annotation_result, coding=True):
 	genes = [feat for feat in annotation_result['GBSeq_feature-table'] if feat['GBFeature_key'] == 'gene']
-	return [basic_gene_info(g) for g in genes]
+	genes = [basic_gene_info(g) for g in genes]
+	if coding is False:
+		genome = annotation_result['GBSeq_sequence']
+		noncoding_regions = get_noncoding_regions_from_genes(genes, genome)
+		return noncoding_regions
+	return genes

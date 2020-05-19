@@ -8,13 +8,12 @@ import multiprocessing
 from collections import Counter
 from pathlib import Path
 
+from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
 from simplesam import Reader as samReader
 
 from src.bowtie import find_offtargets
-
-SPACER_LENGTH = 32
-PAM_SEQ = 'CC'
-INTEGRATION_SITE_DISTANCE = 49
+from src.advanced_parameters import PAM_SEQ, INTEGRATION_SITE_DISTANCE, SPACER_LENGTH
 
 def candidates_for_seq(seq, descriptor):
 	candidates = []
@@ -27,7 +26,7 @@ def candidates_for_seq(seq, descriptor):
 			
 		targetSeq = seq[i+nextPAM+2:i+nextPAM+34]
 		name = descriptor + str(i+nextPAM+2)
-		target = SeqRecord.SeqRecord(targetSeq, id=name, name=name, description=name)
+		target = SeqRecord(targetSeq, id=name, name=name, description=name)
 		candidate = {'name': target.id, 'seqrec': target, 'location': i+nextPAM+2}
 		candidates.append(candidate)
 		i += nextPAM + 1
@@ -75,7 +74,7 @@ def get_candidates_for_region(genome, start_mark, end_mark, name):
 			fp_start = candidate['location'] - INTEGRATION_SITE_DISTANCE - 20
 			fp_end = candidate['location'] - INTEGRATION_SITE_DISTANCE
 		name = candidate['name']
-		candidate['fp_seq'] = SeqRecord.SeqRecord(genome_seq[fp_start:fp_end], id=name, name=name, description=name)
+		candidate['fp_seq'] = SeqRecord(genome_seq[fp_start:fp_end], id=name, name=name, description=name)
 	return candidates
 
 def filter_non_unique_fingerprints(candidates):

@@ -4,7 +4,7 @@ import multiprocessing
 import os
 from pathlib import Path
 
-mismatch_threshold = 5
+from src.advanced_parameters import mismatch_threshold
 
 def build(genbankId):
 	root_dir = Path(__file__).parent.parent

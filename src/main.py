@@ -7,14 +7,13 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 
-from src.genbank import retrieve_annotation, get_genes
+from src.genbank import retrieve_annotation, get_regions
 from src.finder import get_target_region_for_gene, get_candidates_for_region, remove_offtarget_matches
 from src.outputs import make_spacer_gen_output, make_eval_outputs
 from src.bowtie import find_offtargets
 
 
 def spacer_gen(args):
-	print("Starting spacer search...")
 	email = args['email']
 	outputPath = args['outputPath']
 	genbankId = args['genbankId']
@@ -22,33 +21,59 @@ def spacer_gen(args):
 	endPct = args['endPct']
 	spacersPerRegion = args['spacersPerRegion']
 	target_gene_names = args['target_gene_names']
+	regionType = args['regionType']
+	noncoding_boundary = args['noncoding_boundary']
+	custom_regions = args['custom_regions']
 
-	target_gene_names = [s.lower() for s in args['coding']['genesList']]
+	if not email or '@' not in email:
+		print("Please enter an email for NCBI API calls")
+		return
+	if regionType not in ['coding', 'noncoding', 'custom']:
+		print("regionType must be either 'coding', 'noncoding', or 'custom")
+		return
+
+	print("Starting spacer search...")
 	genbank_info = retrieve_annotation(genbankId, email)
-	all_genes = get_genes(genbank_info)
-	target_genes = [gene for gene in all_genes if gene['name'].lower() in target_gene_names]
 	genome = Seq(genbank_info['GBSeq_sequence'])
 
-	for gene in target_genes:
+	if regionType == 'coding':
+		all_genes = get_regions(genbank_info, coding=True)
+		# match gene names case insensitive, lowercase both sides
+		target_gene_names = [t.lower() for t in target_gene_names]
+		target_genes = [gene for gene in all_genes if gene['name'].lower() in target_gene_names]
+		if not len(target_genes):
+			print("You must enter at least one valid gene name")
+			return
+		regions = target_genes
+
+	if regionType == 'noncoding':
+		all_noncoding = get_regions(genbank_info, coding=False)
+		regions = [r for r in all_noncoding if r['end'] > noncoding_boundary[0] and r['start'] < noncoding_boundary[1]]
+
+	if regionType == 'custom':
+		regions = [{'name': f'custom-{index}', 'start': c[0], 'end': c[1], 'direction': 'fw'} for (index, c) in enumerate(custom_regions)]
+		startPct = 0
+		endPct = 100
+
+	for region in regions:
 		start = time.perf_counter()
-		print(gene['name'])
-		print(f"Finding crRNA for \"{gene['name']}\"")
-		[start_mark, end_mark] = get_target_region_for_gene(gene, startPct, endPct)
+		print(region['name'])
+		print(f"Finding crRNA for \"{region['name']}\"")
+		[start_mark, end_mark] = get_target_region_for_gene(region, startPct, endPct)
 		
-		candidates = get_candidates_for_region(genome, start_mark, end_mark, gene['name'])
-		# print("{} candidates with a valid PAM targeting the gene".format(len(candidates)))
+		candidates = get_candidates_for_region(genome, start_mark, end_mark, region['name'])
+		# print("{} candidates with a valid PAM targeting the region".format(len(candidates)))
 		# candidates = filter_non_unique_fingerprints(candidates)
 		# print("{} candidates with a unique fingerprint".format(len(candidates)))
 		
-		candidates = remove_offtarget_matches(genbankId, gene['name'], candidates, spacersPerRegion)
-		gene['candidates'] = candidates
+		candidates = remove_offtarget_matches(genbankId, region['name'], candidates, spacersPerRegion)
+		region['candidates'] = candidates
 		if len(candidates) > spacersPerRegion:
-			gene['candidates'] = candidates[:spacersPerRegion]
+			region['candidates'] = candidates[:spacersPerRegion]
 
 		elapsed_time = round(time.perf_counter() - start, 2)
-		print(f"Identified {len(candidates)} spacers for {gene['name']} in {elapsed_time}")
-	make_spacer_gen_output(target_genes, os.path.join(outputPath, 'spacer_gen_output'))
-	print("done")
+		print(f"Identified {len(candidates)} spacers for {region['name']} in {elapsed_time}")
+	make_spacer_gen_output(regions, os.path.join(outputPath, 'spacer_gen_output'))
 
 def spacer_eval(args):
 	genbankId = args['genbankId']
@@ -56,12 +81,15 @@ def spacer_eval(args):
 	email = args['email']
 	user_spacers = args['spacers']
 
+	if not email or '@' not in email:
+		print("Please enter an email for NCBI API calls")
+		return
+
 	genbank_info = retrieve_annotation(genbankId, email)
-	all_genes = get_genes(genbank_info)
 	genome = Seq(genbank_info['GBSeq_sequence'])
 	
 	spacers = [s for s in user_spacers if len(s) == 32]
-	print(f"Starting evaluation for {len(spacers)} valid spacers...")
+	print(f"Starting evaluation for {len(spacers)} spacers...")
 	spacer_batch = []
 	for (index, spacer) in enumerate(spacers):
 		flexible_seq = spacer[:]
