@@ -91,12 +91,16 @@ def spacer_eval(args):
 	spacers = [s for s in user_spacers if len(s) == 32]
 	print(f"Starting evaluation for {len(spacers)} spacers...")
 	spacer_batch = []
+	spacer_batch_unmod = []  # make unmodified copy of spacer recs for output
 	for (index, spacer) in enumerate(spacers):
 		flexible_seq = spacer[:]
 		for i in range(5, 32, 6):
 			flexible_seq = flexible_seq[:i] + 'N' + flexible_seq[i+1:]
 		spacer_record = SeqRecord(Seq(flexible_seq), id=f'spacer_{index+1}', description=genbankId)  # use 'description' to store ref_genome info
 		spacer_batch.append(spacer_record)
+		spacer_record_unmod = SeqRecord(Seq(spacer.upper()), id=f'spacer_{index + 1}',
+								  description=genbankId)  # unmodified spacer for output
+		spacer_batch_unmod.append(spacer_record_unmod)
 
 	# Write the batch of candidate sequences to a fasta for bowtie2 to use
 	fasta_name = 'offtarget-check.fasta'
@@ -106,7 +110,7 @@ def spacer_eval(args):
 		SeqIO.write(spacer_batch, targets_file, 'fasta')
 
 	output_location = find_offtargets(genbankId, fasta_name)
-	make_eval_outputs(spacer_batch, output_location, genome, outputPath)
+	make_eval_outputs(spacer_batch_unmod, output_location, genome, outputPath)
 
 	os.remove(fasta_name)
 	os.remove(output_location)

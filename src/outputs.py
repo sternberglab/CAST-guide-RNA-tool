@@ -2,8 +2,9 @@ import os
 import csv
 from collections import Counter
 from pathlib import Path
+from Bio.pairwise2 import format_alignment as f_align
 
-from Bio import SeqIO, SeqRecord, Seq
+from Bio import SeqIO, SeqRecord, Seq, pairwise2
 from simplesam import Reader as samReader
 
 from src.advanced_parameters import PAM_SEQ
@@ -36,6 +37,16 @@ def make_spacer_gen_output(regions, output_filename):
 					spacer_id += 1
 	return
 
+def align_offtargets(spacer_seq, offtar_info):  # uses Bio.pairwise2, offtar_info is a list of 2 things
+	if not offtar_info[1]:  # ungapped alignment, penalize gaps more as it usually looks better
+		alignments = pairwise2.align.globalms(spacer_seq, offtar_info[0], 2, -1, -5, -.1) # opening gaps = at least 5 mismatches
+	else:  # probably has gaps that need to be shown
+		alignments = pairwise2.align.globalxx(spacer_seq, offtar_info[0])
+	align_out = f_align(*alignments[0])
+	items = align_out.split('\n')
+	del items[-1]  # manually remove the 'score=XX' line
+	del items[-1]
+	return '\n'.join(items)+'\n'
 
 def make_eval_outputs(spacers, output_sam, genome, output_path):
 	genome_seq = genome.upper()
@@ -48,17 +59,18 @@ def make_eval_outputs(spacers, output_sam, genome, output_path):
 	for spacer in spacers:
 		reads = [r for r in sam_reads if r.safename == spacer.id]
 		mismatch_list = []  # to get min/max mismatches
-		if len(reads) == 1:
-			print(f"Spacer '{spacer.id}' has no potential off-targets")
-			spacer_loc = reads[0].coords[0] if reads[0].reverse else reads[0].coords[-1]
-
-		elif len(reads) > 1:
-			print(f"Spacer '{spacer.id}' has {len(reads)-1} potential off-targets - see output files for details")
-			with open(os.path.join(output_path, f'crrna_{spacer.id}_off_target.txt'), 'w') as log:
-				log.write(f"Potential off-target sites for {spacer.id}")
-				log.write("\n(Top row is spacer sequence, following rows are potential off-targets; closest matches listed first)")
-				log.write("\n-------------")
+		# if len(reads) == 1:
+		#     print(f"Spacer '{spacer.id}' has no potential off-targets")
+		#     spacer_match = reads[0].coords[0] if reads[0].reverse else reads[0].coords[-1]
+		spacer_match = 'No perfect match found'  # update if perfect match (true protospacer) is found
+		if len(reads) >= 1:
+			print(f"Spacer '{spacer.id}' has {len(reads)} potential match(es) - see output files for details")
+			with open(os.path.join(output_path, f'{spacer.id}_off_target.txt'), 'w') as text_out:
+				text_out.write(f"Potential off-target sites for {spacer.id}")
+				text_out.write("\n(Closer matches to protospacer listed first)")
+				text_out.write("\n-------------")
 				proto_list = []
+				perfect_match = False
 				for i in reads:
 					if i.reverse:
 						pam = genome_seq[i.coords[-1]:i.coords[-1] + 2].upper()
@@ -68,57 +80,61 @@ def make_eval_outputs(spacers, output_sam, genome, output_path):
 					else:
 						pam = genome_seq[i.coords[0] - 3:i.coords[0] - 1]
 						protospacer = genome_seq[i.coords[0] - 1:i.coords[-1]]
-					proto_list.append(protospacer)
-					log.write(f"\n{protospacer.upper()} "
-							  f"(Coordinates: {i.coords[0]}; PAM: {pam.upper()}; RevCom = {i.reverse})")
-				for i in reads[1:]:
-					mismatch_count = abs(i.tags['AS'])//6  # use AS instead of NM since NM counts wobble bases
-					mismatch_list.append(mismatch_count)
-				log.write("\n-------------")
-				log.write("\nAlignment: (ambiguous base mismatches shown as lower case")
-				log.write((f"\n{proto_list[0]}"))
-				for target in range(1, len(proto_list)):
-					log.write("\n")
-					pos = 0
-					for a, b in zip(proto_list[0], proto_list[target]):
-						pos += 1
-						if a == b:
-							log.write("-")
-						else:
-							if pos%6 == 0:  # check if ambiguous base
-								log.write(str(b).lower())
+					gapped_align = i.tags['XO'] > 0
+					proto_list.append([protospacer, gapped_align])
+					if protospacer == spacer.seq:
+						perfect_match = True
+					mismatch_count = abs(i.tags['XM']) - 5 if len(
+						protospacer) >= 32 else 'N/A'  # use XM and assumes 5 ambiguous bases
+					if perfect_match:
+						spacer_match = 'Perfect match(es) found'
+					text_out.write(f"\n{protospacer.upper()} "
+								   f"  Coordinates: {i.coords[0]}; PAM: {pam.upper()}; RevCom = {i.reverse}; "
+								   f"Perfect Match = {str(perfect_match)}; Mismatches = {mismatch_count}; Gapped Alignment = {gapped_align}")
+					if mismatch_count != 'N/A':
+						mismatch_list.append(mismatch_count)
+				text_out.write("\n-------------")
+				text_out.write(
+					"\nPairwise Alignments: (ruler for ambiguous base positions shown above each alignment pair for ungapped alignments)\n")
+				# text_out.write('\n')
+				for target in proto_list:
+					if not target[1]:  # ungapped; print out a ruler
+						text_out.write('\n')
+						for _ in range(0, len(spacer.seq)):
+							if (_ + 1) % 6 == 0:
+								text_out.write('X')
 							else:
-								log.write(str(b).upper())
-				log.write(f"\nTotal potential off-targets = {len(reads) - 1}")
-			spacer_loc = reads[0].coords[0] if reads[0].reverse else reads[0].coords[-1]
+								text_out.write('-')
+					text_out.write('\n' + align_offtargets(spacer.seq, target))
+
+				text_out.write(f"\nTotal potential matches = {len(reads)}")
+				if not perfect_match:
+					text_out.write('\nNo identical protospacer found')
+				else:
+					text_out.write('\nIdentical protospacer(s) found')
 
 		else:
-			print(f"Warning - no protospacer found for spacer '{spacer.id}'")
-			spacer_loc = 'No protospacer found'
+			print(f"Warning - no matches, including protospacer, found for spacer '{spacer.id}'")
 
-		spacer_dict = {'name': spacer.id, 'sequence': spacer.seq, 'refseq': spacer.description, 'location': spacer_loc,
-					   'offtar_count': len(reads)-1 if len(reads)>0 else 'N/A',
-					   'mismatch_min': min(mismatch_list) if len(mismatch_list)>0 else 'N/A',
-					   'mismatch_max': max(mismatch_list) if len(mismatch_list)>0 else 'N/A'}
+		spacer_dict = {'name': spacer.id, 'sequence': spacer.seq, 'refseq': spacer.description,
+					   'match_found': spacer_match,
+					   'offtar_count': len(reads),
+					   'mismatch_min': min(mismatch_list) if len(mismatch_list) > 0 else 'N/A',
+					   'mismatch_max': max(mismatch_list) if len(mismatch_list) > 0 else 'N/A'}
 		spacer_output.append(spacer_dict)
 
 	print('------------')
 
 	fieldnames = ['Spacer Name', 'Spacer Sequence', 'Reference Genome',
-				  'Protospacer Location', 'Number of Off-targets', 'Fewest Mismatches', 'Most Mismatches']
+				  'Perfect Match', 'Number of Matches', 'Fewest Mismatches', 'Most Mismatches']
 	with open(os.path.join(Path(output_path), 'spacer_eval_output.csv'), 'w', newline='') as out_file:
 		writer = csv.DictWriter(out_file, fieldnames=fieldnames)
 		writer.writeheader()
 		for spacer in spacer_output:
 			row = {'Spacer Name': spacer['name'], 'Spacer Sequence': spacer['sequence'],
-				   'Reference Genome': spacer['refseq'], 'Protospacer Location': spacer['location'],
-				   'Number of Off-targets': spacer['offtar_count'],
+				   'Reference Genome': spacer['refseq'], 'Perfect Match': spacer['match_found'],
+				   'Number of Matches': spacer['offtar_count'],
 				   'Fewest Mismatches': spacer['mismatch_min'], 'Most Mismatches': spacer['mismatch_max']}
 			writer.writerow(row)
 	return
 
-def spacer_eval():
-	make_eval_output_files(spacers, output_name)
-
-	os.remove(fasta_name)
-	os.remove(output_name)
