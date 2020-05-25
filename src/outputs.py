@@ -39,7 +39,7 @@ def make_spacer_gen_output(regions, output_filename):
 
 def align_offtargets(spacer_seq, offtar_info):  # uses Bio.pairwise2, offtar_info is a list of 2 things
 	if not offtar_info[1]:  # ungapped alignment, penalize gaps more as it usually looks better
-		alignments = pairwise2.align.globalms(spacer_seq, offtar_info[0], 2, -1, -5, -.1) # opening gaps = at least 5 mismatches
+		alignments = pairwise2.align.globalms(spacer_seq, offtar_info[0], 2, -1, -7, -1) # opening gaps = at least 7 mismatches
 	else:  # probably has gaps that need to be shown
 		alignments = pairwise2.align.globalxx(spacer_seq, offtar_info[0])
 	align_out = f_align(*alignments[0])

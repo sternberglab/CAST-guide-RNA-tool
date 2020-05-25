@@ -121,4 +121,4 @@ def spacer_eval(args):
 	make_eval_outputs(spacer_batch_unmod, output_location, genome, outputPath)
 
 	os.remove(fasta_name)
-	os.remove(output_location)
+	# os.remove(output_location)
