@@ -11,6 +11,7 @@ from src.genbank import retrieve_annotation, get_regions
 from src.finder import get_target_region_for_gene, get_candidates_for_region, remove_offtarget_matches
 from src.outputs import make_spacer_gen_output, make_eval_outputs
 from src.bowtie import find_offtargets
+from src.advanced_parameters import SPACER_LENGTH, flex_base, flex_spacing
 
 
 def spacer_gen(args):
@@ -88,19 +89,26 @@ def spacer_eval(args):
 	genbank_info = retrieve_annotation(genbankId, email)
 	genome = Seq(genbank_info['GBSeq_sequence'])
 	
-	spacers = [s for s in user_spacers if len(s) == 32]
+	spacers = [s for s in user_spacers if len(s) == SPACER_LENGTH]
 	print(f"Starting evaluation for {len(spacers)} spacers...")
 	spacer_batch = []
 	spacer_batch_unmod = []  # make unmodified copy of spacer recs for output
-	for (index, spacer) in enumerate(spacers):
-		flexible_seq = spacer[:]
-		for i in range(5, 32, 6):
-			flexible_seq = flexible_seq[:i] + 'N' + flexible_seq[i+1:]
-		spacer_record = SeqRecord(Seq(flexible_seq), id=f'spacer_{index+1}', description=genbankId)  # use 'description' to store ref_genome info
-		spacer_batch.append(spacer_record)
-		spacer_record_unmod = SeqRecord(Seq(spacer.upper()), id=f'spacer_{index + 1}',
-								  description=genbankId)  # unmodified spacer for output
-		spacer_batch_unmod.append(spacer_record_unmod)
+	if flex_base:
+		for (index, spacer) in enumerate(spacers):
+			flexible_seq = spacer[:]
+			for i in range(flex_spacing-1, SPACER_LENGTH, flex_spacing):
+				flexible_seq = flexible_seq[:i] + 'N' + flexible_seq[i+1:]
+			spacer_record = SeqRecord(Seq(flexible_seq), id=f'spacer_{index+1}', description=genbankId)  # use 'description' to store ref_genome info
+			spacer_batch.append(spacer_record)
+			spacer_record_unmod = SeqRecord(Seq(spacer.upper()), id=f'spacer_{index + 1}',
+									  description=genbankId)  # unmodified spacer for output
+			spacer_batch_unmod.append(spacer_record_unmod)
+	else:
+		for (index, spacer) in enumerate(spacers):
+			spacer_record = SeqRecord(Seq(spacer), id=f'spacer_{index + 1}',
+									  description=genbankId)  # use 'description' to store ref_genome info
+			spacer_batch.append(spacer_record)
+			spacer_batch_unmod.append(spacer_record)
 
 	# Write the batch of candidate sequences to a fasta for bowtie2 to use
 	fasta_name = 'offtarget-check.fasta'

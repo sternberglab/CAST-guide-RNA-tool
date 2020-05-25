@@ -7,7 +7,7 @@ from Bio.pairwise2 import format_alignment as f_align
 from Bio import SeqIO, SeqRecord, Seq, pairwise2
 from simplesam import Reader as samReader
 
-from src.advanced_parameters import PAM_SEQ
+from src.advanced_parameters import PAM_SEQ, SPACER_LENGTH, flex_base, flex_spacing
 
 def make_spacer_gen_output(regions, output_filename):
 	fieldnames = ['spacer_id', 'region', 'sequence', 'genomic_coordinate', 'GC_content', 'PAM', 'strand']
@@ -73,7 +73,7 @@ def make_eval_outputs(spacers, output_sam, genome, output_path):
 				perfect_match = False
 				for i in reads:
 					if i.reverse:
-						pam = genome_seq[i.coords[-1]:i.coords[-1] + 2].upper()
+						pam = genome_seq[i.coords[-1]:i.coords[-1] + 2].upper()  # todo allow different PAM lengths
 						pam = pam.reverse_complement()
 						protospacer = genome_seq[i.coords[0] - 1:i.coords[-1]].upper()
 						protospacer = protospacer.reverse_complement()
@@ -84,8 +84,9 @@ def make_eval_outputs(spacers, output_sam, genome, output_path):
 					proto_list.append([protospacer, gapped_align])
 					if protospacer == spacer.seq:
 						perfect_match = True
-					mismatch_count = abs(i.tags['XM']) - 5 if len(
-						protospacer) >= 32 else 'N/A'  # use XM and assumes 5 ambiguous bases
+					flex_count = len(spacer.seq)//flex_spacing if flex_base else 0
+					mismatch_count = abs(i.tags['XM']) - flex_count if len(
+						protospacer) >= len(spacer.seq) else 'N/A'  # use XM, taking into account flexible bases
 					if perfect_match:
 						spacer_match = 'Perfect match(es) found'
 					text_out.write(f"\n{protospacer.upper()} "
