@@ -165,6 +165,7 @@ def remove_offtarget_matches(genbank_id, name, candidates, minMatches, overlappi
 	untested = candidates.copy()
 
 	while len(no_offtargets) < minMatches and len(untested) > 0:
+		print(f"So far {len(no_offtargets)} no offtargets and {len(untested)} untested")
 		# Use 10 as the batch size to check for bowtie off-target matches
 		test_candidates = choose_next_offtarget_batch(untested, no_offtargets, overlapping_spacers, 3)
 		# Get the candidate sequences to use, and

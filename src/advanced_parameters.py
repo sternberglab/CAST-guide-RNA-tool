@@ -1,7 +1,7 @@
 # Search for up to this number of mismatches (ignoring every 6th bp)
 # Note: This is the primary driver of search speed
 # Ex. Searching EColi for 10 sequences at 5 mismatch threshold takes ~3 minutes on a normal PC
-mismatch_threshold = 5
+mismatch_threshold = 4
 
 # Minimum basepairs length to qualify as an intergenic region
 # Note: There are single digit, even 1bp gaps between some coding sequences

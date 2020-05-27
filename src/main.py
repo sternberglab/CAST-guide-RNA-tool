@@ -1,6 +1,7 @@
 import json
 import time
 import os
+import csv
 from pathlib import Path
 
 from Bio.Seq import Seq
@@ -10,11 +11,12 @@ from Bio import SeqIO
 from src.genbank import retrieve_annotation, get_regions
 from src.finder import get_target_region_for_gene, get_candidates_for_region, remove_offtarget_matches, order_candidates_for_region
 from src.outputs import make_spacer_gen_output, make_eval_outputs
-from src.bowtie import find_offtargets
+from src.parse import extract_column_from_csv
 
 def spacer_gen(args):
 	# unpack the arguments
 	email = args['email']
+	nonessential_only = args['nonessential_only']
 	output_path = args['output_path']
 	genbank_id = args['genbank_id']
 	start_pct = args['start_pct']
@@ -22,11 +24,11 @@ def spacer_gen(args):
 	spacers_per_region = args['spacers_per_region']
 	GC_requirement = args['GC_requirement']
 	overlapping_spacers = args['overlapping_spacers']
-	target_gene_names = args['target_gene_names']
+	target_locus_tags_csv = args['target_locus_tags_csv']
 	coding_spacer_direction = args['coding_spacer_direction']
 	region_type = args['region_type']
 	noncoding_boundary = args['noncoding_boundary']
-	custom_regions = args['custom_regions']
+	custom_regions_csv = args['custom_regions_csv']
 
 	# Check for required parameters
 	if not email or '@' not in email:
@@ -43,30 +45,40 @@ def spacer_gen(args):
 
 	# Generate coding regions for each region_type
 	if region_type == 'coding':
-		all_genes = get_regions(genbank_info, coding=True)
+		all_genes = get_regions(genbank_info, region='coding')
 		# match gene names case insensitive, lowercase both sides
-		target_gene_names = [t.lower() for t in target_gene_names]
-		target_genes = [gene for gene in all_genes if gene['name'].lower() in target_gene_names]
+		target_locus_tag_ids = extract_column_from_csv(target_locus_tags_csv, 'locus_tags')
+		target_genes = [gene for gene in all_genes if gene['name'] in target_locus_tag_ids]
 		if not len(target_genes):
-			print("You must enter at least one valid gene name")
+			print(f"You must enter at least one valid locus tag identifier, ex. {all_genes[0]['name']}")
 			return
 		regions = target_genes
 
 	if region_type == 'noncoding':
-		all_noncoding = get_regions(genbank_info, coding=False)
+		if len(noncoding_boundary) != 2:
+			print("You must specify the boundaries around which to search for noncoding regions")
+			return
+		region_name = 'nonessential' if nonessential_only else 'noncoding'
+		all_noncoding = get_regions(genbank_info, region=region_name)
 		regions = [r for r in all_noncoding if r['end'] > noncoding_boundary[0] and r['start'] < noncoding_boundary[1]]
+		start_pct = 0
+		end_pct = 100
 
 	if region_type == 'custom':
+		if not Path(custom_regions_csv).exists():
+			print("Must input a valid filepath for the custom regions csv")
+			return
+		with open(Path(custom_regions_csv), 'r', encoding='utf-8-sig') as csv_file:
+			reader = csv.DictReader(csv_file)
+			custom_regions = [[int(r['start_ref']), int(r['end_ref'])] for r in reader]
 		regions = [{'name': f'custom-{index}', 'start': c[0], 'end': c[1], 'direction': 'fw'} for (index, c) in enumerate(custom_regions)]
 		start_pct = 0
 		end_pct = 100
 
 	for region in regions:
 		start = time.perf_counter()
-		print(region['name'])
 		print(f"Finding gRNA for \"{region['name']}\"")
 		[start_mark, end_mark] = get_target_region_for_gene(region, start_pct, end_pct)
-		
 		candidates = get_candidates_for_region(genome, start_mark, end_mark, region['name'], GC_requirement)
 		if region_type == 'coding':
 			if coding_spacer_direction not in ['N_to_C', 'C_to_N']:
