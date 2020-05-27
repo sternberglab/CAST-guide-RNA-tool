@@ -105,10 +105,14 @@ def filter_non_unique_fingerprints(candidates):
 	return filtered_candidates
 
 def order_candidates_for_region(candidates, region, coding_spacer_direction):
-	if coding_spacer_direction == 'N_to_C':
+	is_fwd_strand_and_NtoC = coding_spacer_direction == 'N_to_C' and region['direction'] == 'fw'
+	is_rv_strand_and_CtoN = coding_spacer_direction == 'C_to_N' and region['direction'] == 'rv'
+	
+	if is_fwd_strand_and_NtoC or is_rv_strand_and_CtoN:
 		reverse = False
-	elif coding_spacer_direction == 'C_to_N':
+	else:
 		reverse = True
+	# The lambda sort functions is to sort by the target site location instead of the spacer location
 	return sorted(candidates,key=(lambda c: c['location'] + INTEGRATION_SITE_DISTANCE if 'fw' in c['name'] else (c['location'] - INTEGRATION_SITE_DISTANCE)), reverse=reverse)
 
 def candidate_overlaps(candidate, overlap_regions):
