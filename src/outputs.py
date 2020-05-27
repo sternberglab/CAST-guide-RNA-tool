@@ -1,16 +1,14 @@
 import os
 import csv
-from collections import Counter
 from pathlib import Path
 
-from Bio import SeqIO, SeqRecord, Seq
+from Bio import SeqIO, SeqRecord, Seq, SeqUtils
 from simplesam import Reader as samReader
 
 from src.advanced_parameters import PAM_SEQ
 
 def make_spacer_gen_output(regions, output_filename):
 	fieldnames = ['spacer_id', 'region', 'sequence', 'genomic_coordinate', 'GC_content', 'PAM', 'strand']
-	gc_counter = Counter(['G', 'C'])
 
 	spacer_id = 0
 	with open(f'{output_filename}.csv', 'w', newline='') as out_file:
@@ -19,9 +17,7 @@ def make_spacer_gen_output(regions, output_filename):
 		for region in regions:
 			if 'candidates' in region:
 				for c in region['candidates']:
-					seq = c['seqrec'].seq
-					counter = Counter(seq)
-					GC_content = (counter['G'] + counter['C'])/len(seq)
+					GC_content = SeqUtils.GC(c['seqrec'].seq)
 
 					row = {
 						'spacer_id': spacer_id,

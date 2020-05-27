@@ -10,52 +10,52 @@ from Bio.Seq import Seq
 from src.bowtie import build
 from src.advanced_parameters import minimum_intergenic_region_length
 
-def get_from_cache(genbankId):
+def get_from_cache(genbank_id):
 	root_dir = Path(__file__).parent.parent
 	genbank_assets_path = os.path.join(root_dir, 'assets', 'genbank')
 	os.makedirs(genbank_assets_path, exist_ok=True)
 
-	genbank_file = os.path.join(genbank_assets_path, f'{genbankId}.json')
+	genbank_file = os.path.join(genbank_assets_path, f'{genbank_id}.json')
 	if Path(genbank_file).exists():
 		with open(genbank_file, 'r') as f:
 			return json.load(f)
 	return False
 
-def save_to_cache(genbankId, genbank_info):
+def save_to_cache(genbank_id, genbank_info):
 	root_dir = Path(__file__).parent.parent
 	genbank_assets_path = os.path.join(root_dir, 'assets', 'genbank')
 	os.makedirs(genbank_assets_path, exist_ok=True)
 
-	genbank_file = os.path.join(genbank_assets_path,  f'{genbankId}.json')
+	genbank_file = os.path.join(genbank_assets_path,  f'{genbank_id}.json')
 	with open(genbank_file, 'w') as f:
 		json.dump(genbank_info, f)
-	genbank_fasta = os.path.join(genbank_assets_path,  f'{genbankId}.fasta')
+	genbank_fasta = os.path.join(genbank_assets_path,  f'{genbank_id}.fasta')
 	with open(genbank_fasta, 'w') as f:
-		seqrec = SeqRecord(Seq(genbank_info['GBSeq_sequence']), id=genbankId, name=genbankId, description=genbankId)
+		seqrec = SeqRecord(Seq(genbank_info['GBSeq_sequence']), id=genbank_id, name=genbank_id, description=genbank_id)
 		SeqIO.write(seqrec, f, 'fasta')
-	build(genbankId)
+	build(genbank_id)
 
-def retrieve_annotation(genbankId, email):
+def retrieve_annotation(genbank_id, email):
 	# *Always* tell NCBI who you are
 	Entrez.email = email
 
-	cached = get_from_cache(genbankId)
+	cached = get_from_cache(genbank_id)
 	if cached:
-		save_to_cache(genbankId, cached)
+		save_to_cache(genbank_id, cached)
 		return cached	
 	"""
 	Annotates Entrez Gene IDs using Bio.Entrez, in particular epost (to
 	submit the data to NCBI) and esummary to retrieve the information.
 	Returns a list of dictionaries with the annotations.
 	"""
-	print(f"Fetching genbank info for {genbankId}")
-	handle = Entrez.efetch("nucleotide", id=genbankId, retmode="xml")
+	print(f"Fetching genbank info for {genbank_id}")
+	handle = Entrez.efetch("nucleotide", id=genbank_id, retmode="xml")
 	try:
 		result = Entrez.read(handle)[0]
 	except RuntimeError as e:
 		print(e)
 		sys.exit(-1)
-	save_to_cache(genbankId, result)
+	save_to_cache(genbank_id, result)
 	return result
 
 def basic_gene_info(gene):
