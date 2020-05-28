@@ -30,12 +30,12 @@ overlapping_spacers = "avoid"
 # -------------- REGION TYPES - CODING, NONCODING, OR CUSTOM --------------#
 # region_type must be 'coding', 'noncoding', or 'custom'
 # see the specific settings for each below
-region_type = 'noncoding'
+region_type = 'coding'
 
 # -------------- CODING REGION SETTINGS -----------------------------------#
 # Percent of each region to target, from N terminus to C terminus
-start_pct = 10
-end_pct = 50
+start_pct = 0
+end_pct = 100
 
 # How to prioritize choosing spacers in each region:
 # Must be either "N_to_C" search or "C_to_N" search

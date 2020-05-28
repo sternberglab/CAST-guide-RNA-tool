@@ -4,7 +4,7 @@ import multiprocessing
 import os
 from pathlib import Path
 
-from src.advanced_parameters import mismatch_threshold
+from src.advanced_parameters import mismatch_threshold, allow_gaps
 
 def build(genbank_id):
 	root_dir = Path(__file__).parent.parent
@@ -35,6 +35,11 @@ def find_offtargets(genbank_id, fasta_name):
 	# --score-min : scoring equation, for us just flat min score of (-6 per mismatch X mismatch_threshold) or greater is a pass
 	# -N 0 -L 5 -i S,6,0 -D 10: Sets the multiseed alignment rules. 0 mismatches allowed, seed length 5, and skip 6bp between seeds. Search up to 10 seeds before failing
 	# (This means there must be one fully matching 5bp sequence between a set of ambiguous characters to pass the seed filtering)
+	# --rdg XX,1 : read gap-open penalty of XX and gap-extension penalty of 1. Set XX to scale with mismatch_threshold
+	# --rfg XX,1 : reference gap-open penalty of 50 and gap-extension penalty of 1
+	gap_option = f'--rdg {mismatch_threshold*100},1 --rfg {mismatch_threshold*100},1' if not allow_gaps else ''
+
+
 	cores = multiprocessing.cpu_count()
 	output_name = fasta_name.split('.')[0] + '-offtarget-matches.sam'
 	output_location = os.path.join(root_dir, 'assets', 'bowtie', genbank_id, output_name)
@@ -42,6 +47,6 @@ def find_offtargets(genbank_id, fasta_name):
 	root_dir = Path(__file__).parent.parent
 	index_location = os.path.join(root_dir, 'assets', 'bowtie', genbank_id, 'index')
 
-	align_command = f'bowtie2 -x {index_location} -a -f -t {fasta_name} -p {cores - 1} -S {output_location} --no-1mm-upfront --np 0 --n-ceil 5 --score-min L,-{6*mismatch_threshold+1},0 -N 0 -L 5 -i S,6,0 -D 6'
+	align_command = f'bowtie2 -x {index_location} -a -f -t {fasta_name} -p {cores - 1} {gap_option} -S {output_location} --no-1mm-upfront --np 0 --n-ceil 5 --score-min L,-{6*mismatch_threshold+1},0 -N 0 -L 5 -i S,6,0 -D 6'
 	subprocess.run(align_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 	return output_location
