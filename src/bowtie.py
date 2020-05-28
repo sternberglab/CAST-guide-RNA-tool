@@ -6,9 +6,9 @@ from pathlib import Path
 
 from src.advanced_parameters import mismatch_threshold, allow_gaps
 
-def build(genbankId):
+def build(genbank_id):
 	root_dir = Path(__file__).parent.parent
-	bowtie_genome_dir = os.path.join(root_dir, 'assets', 'bowtie', genbankId)
+	bowtie_genome_dir = os.path.join(root_dir, 'assets', 'bowtie', genbank_id)
 	os.makedirs(bowtie_genome_dir, exist_ok=True)
 
 	build_output_name = os.path.join(bowtie_genome_dir, 'index')
@@ -16,13 +16,13 @@ def build(genbankId):
 	if Path(f'{build_output_name}.1.bt2').exists():
 		return
 	
-	fasta_file = os.path.join(root_dir, 'assets', 'genbank', f'{genbankId}.fasta')
+	fasta_file = os.path.join(root_dir, 'assets', 'genbank', f'{genbank_id}.fasta')
 	build_command = f'bowtie2-build {fasta_file} {build_output_name} -q'
-	subprocess.run(build_command, shell=True)
+	subprocess.run(build_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-def find_offtargets(genbankId, fasta_name):
+def find_offtargets(genbank_id, fasta_name):
 	root_dir = Path(__file__).parent.parent
-	index_location = os.path.join(root_dir, 'assets', 'bowtie', genbankId, 'index')
+	index_location = os.path.join(root_dir, 'assets', 'bowtie', genbank_id, 'index')
 	# Run the bowtie2 alignment command
 	# -x {} : the name of the genome index file (already built by bowtie2-build)
 	# -a : return all results, not just highest match
@@ -42,11 +42,11 @@ def find_offtargets(genbankId, fasta_name):
 
 	cores = multiprocessing.cpu_count()
 	output_name = fasta_name.split('.')[0] + '-offtarget-matches.sam'
-	output_location = os.path.join(root_dir, 'assets', 'bowtie', genbankId, output_name)
+	output_location = os.path.join(root_dir, 'assets', 'bowtie', genbank_id, output_name)
 
 	root_dir = Path(__file__).parent.parent
-	index_location = os.path.join(root_dir, 'assets', 'bowtie', genbankId, 'index')
+	index_location = os.path.join(root_dir, 'assets', 'bowtie', genbank_id, 'index')
 
 	align_command = f'bowtie2 -x {index_location} -a -f -t {fasta_name} -p {cores - 1} {gap_option} -S {output_location} --no-1mm-upfront --np 0 --n-ceil 5 --score-min L,-{6*mismatch_threshold+1},0 -N 0 -L 5 -i S,6,0 -D 6'
-	subprocess.run(align_command, shell=True)
+	subprocess.run(align_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 	return output_location
