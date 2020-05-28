@@ -21,6 +21,8 @@ def spacer_gen(args):
 	nonessential_only = args['nonessential_only']
 	output_path = args['output_path']
 	genbank_id = args['genbank_id']
+	genbank_file = args['genbank_file']
+	genome_fasta_file = args['genome_fasta_file']
 	start_pct = args['start_pct']
 	end_pct = args['end_pct']
 	spacers_per_region = args['spacers_per_region']
@@ -33,18 +35,36 @@ def spacer_gen(args):
 	custom_regions_csv = args['custom_regions_csv']
 
 	# Check for required parameters
-	if not email or '@' not in email:
-		print("Please enter an email for NCBI API calls")
-		return
 	if region_type not in ['coding', 'noncoding', 'custom']:
 		print("region_type must be either 'coding', 'noncoding', or 'custom")
 		return
 
 	# Load genome data
-	print("Starting spacer search...")
-	genbank_info = retrieve_annotation(genbank_id, email)
-	genome = Seq(genbank_info['GBSeq_sequence'])
+	if genbank_id:
+		if not email or '@' not in email:
+			print("Please enter an email for NCBI API calls")
+			return
+		genbank_info = retrieve_annotation(genbank_id, email)
+	elif genbank_file:
+		if not Path(genbank_file).exists():
+			print("Invalid genbank_file provided. Either leave it empty or provide a valid file path. ")
+			return
+		with open(genbank_file, 'r') as f:
+			genbank_info = json.load(f)
+	elif genome_fasta_file:
+		if not Path(genbank_file).exists():
+			print("Invalid genome_fasta_file provided. Either leave it empty or provide a valid file path. ")
+			return
+		if not region_type == 'custom':
+			print("Cannot do coding or noncoding spacer generation against a fasta file. Use a genbank input or use custom regions against this fasta. ")
+			return
+		genome = SeqIO.read(Path(genome_path), "fasta").seq.upper()
+	
+	if genbank_info:
+		genome = Seq(genbank_info['GBSeq_sequence'])
 
+
+	print("Starting spacer search...")
 	# Generate coding regions for each region_type
 	if region_type == 'coding':
 		all_genes = get_regions(genbank_info, region='coding')

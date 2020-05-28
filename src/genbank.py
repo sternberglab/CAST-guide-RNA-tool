@@ -41,7 +41,6 @@ def retrieve_annotation(genbank_id, email):
 
 	cached = get_from_cache(genbank_id)
 	if cached:
-		save_to_cache(genbank_id, cached)
 		return cached	
 	"""
 	Annotates Entrez Gene IDs using Bio.Entrez, in particular epost (to
