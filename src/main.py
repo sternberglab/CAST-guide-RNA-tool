@@ -44,30 +44,30 @@ def spacer_gen(args):
 		if not email or '@' not in email:
 			print("Please enter an email for NCBI API calls")
 			return
-		genbank_info = retrieve_annotation(genbank_id, email)
+		record = retrieve_annotation(genbank_id, email)
 	elif genbank_file:
 		if not Path(genbank_file).exists():
 			print("Invalid genbank_file provided. Either leave it empty or provide a valid file path. ")
 			return
 		with open(genbank_file, 'r') as f:
-			genbank_info = json.load(f)
+			record = SeqIO.read(Path(genbank_file), 'genbank')
+			genbank_id = record.id
 	elif genome_fasta_file:
-		if not Path(genbank_file).exists():
+		if not Path(genome_fasta_file).exists():
 			print("Invalid genome_fasta_file provided. Either leave it empty or provide a valid file path. ")
 			return
 		if not region_type == 'custom':
 			print("Cannot do coding or noncoding spacer generation against a fasta file. Use a genbank input or use custom regions against this fasta. ")
 			return
-		genome = SeqIO.read(Path(genome_path), "fasta").seq.upper()
-	
-	if genbank_info:
-		genome = Seq(genbank_info['GBSeq_sequence'])
-
+		record =SeqIO.read(Path(genome_fasta_file), "fasta")
+		genbank_id = record.id
+	genome = record.seq.upper()
 
 	print("Starting spacer search...")
 	# Generate coding regions for each region_type
 	if region_type == 'coding':
-		all_genes = get_regions(genbank_info, region='coding')
+		all_genes = get_regions(record, region='coding')
+
 		# match gene names case insensitive, lowercase both sides
 		target_locus_tag_ids = extract_column_from_csv(target_locus_tags_csv, 'locus_tags')
 		target_genes = [gene for gene in all_genes if gene['name'] in target_locus_tag_ids]
@@ -81,7 +81,7 @@ def spacer_gen(args):
 			print("You must specify the boundaries around which to search for noncoding regions")
 			return
 		region_name = 'nonessential' if nonessential_only else 'noncoding'
-		all_noncoding = get_regions(genbank_info, region=region_name)
+		all_noncoding = get_regions(record, region=region_name)
 		regions = [r for r in all_noncoding if r['end'] > noncoding_boundary[0] and r['start'] < noncoding_boundary[1]]
 		start_pct = 0
 		end_pct = 100
@@ -127,8 +127,8 @@ def spacer_eval(args):
 		print("Please enter an email for NCBI API calls")
 		return
 
-	genbank_info = retrieve_annotation(genbank_id, email)
-	genome = Seq(genbank_info['GBSeq_sequence'])
+	record = retrieve_annotation(genbank_id, email)
+	genome = record.seq.upper()
 	
 	spacers = [s for s in user_spacers if len(s) == SPACER_LENGTH]
 	print(f"Starting evaluation for {len(spacers)} spacers...")

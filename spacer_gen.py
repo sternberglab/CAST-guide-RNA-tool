@@ -33,7 +33,9 @@ genbank_id = ''
 email = ''
 
 # Genbank file is a path to a local genbank file
-# Ex. genbank_file = 'C:\Users\Me\Documents\experiments\integrate2010\genome.genbank'
+# Must be a FULL genbank file for coding and noncoding modes, containing both the 
+# full genome sequence and the feature definitions
+# Ex. genbank_file = 'C:\Users\Me\Documents\experiments\integrate2010\genome.gb'
 genbank_file = ''
 
 # genome_fasta_file is a path to a local fasta file containing the genome for 
@@ -44,7 +46,7 @@ genome_fasta_file = ''
 
 # -------------- REGION TYPES - CODING, NONCODING, OR CUSTOM --------------#
 # region_type must be 'coding', 'noncoding', or 'custom'
-# see the specific settings for each below
+# see the specific additional settings for each below
 region_type = 'coding'
 
 # -------------- CODING REGION SETTINGS -----------------------------------#
