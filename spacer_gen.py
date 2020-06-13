@@ -28,9 +28,9 @@ overlapping_spacers = 'avoid'
 # The downloaded genbank files are cached locally in the assets folder, and will only
 # be downloaded from NCBI if not present
 # Ex. "CP001509.3"
-genbank_id = ''
+genbank_id = 'CP001509.3'
 # Email: only used for NCBI API calls, be polite!
-email = ''
+email = 'acreechristopher@gmail.com'
 
 # Genbank file is a path to a local genbank file
 # Must be a FULL genbank file for coding and noncoding modes, containing both the 
@@ -47,7 +47,7 @@ genome_fasta_file = ''
 # -------------- REGION TYPES - CODING, NONCODING, OR CUSTOM --------------#
 # region_type must be 'coding', 'noncoding', or 'custom'
 # see the specific additional settings for each below
-region_type = 'coding'
+region_type = 'noncoding'
 
 # -------------- CODING REGION SETTINGS -----------------------------------#
 # Percent of each region to target, from N terminus to C terminus
@@ -68,11 +68,11 @@ target_locus_tags_csv = ''
 # genome_boundary takes a single pair of coordinates, and will only target
 # intergenic regions that lie between the two values
 # Ex. noncoding_boundary = [13555, 20000]
-noncoding_boundary = []
+noncoding_boundary = [0,20000]
 
 # Restricts regions to sites that are "nonessential": those with the 
 # C terminus of a coding region on both ends. Either False or True
-nonessential_only = False
+nonessential_only = True
 
 
 # --------------- CUSTOM REGION SETTINGS ----------------------------------#

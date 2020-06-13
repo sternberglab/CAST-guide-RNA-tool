@@ -102,7 +102,7 @@ def get_regions(genbank, region='coding'):
 	genes = [feat for feat in genbank.features if feat.type == 'gene']
 	genes = [basic_gene_info(g) for g in genes]
 	if region != 'coding':
-		genome = annotation_result['GBSeq_sequence']
+		genome = genbank.seq
 		noncoding_regions = get_noncoding_regions_from_genes(genes, genome, region=='nonessential')
 		return noncoding_regions
 	return genes
