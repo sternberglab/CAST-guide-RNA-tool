@@ -9,7 +9,7 @@ See [here](http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowt
 Python dependencies can be installed with `pip install -r requirements.txt` run in this directory. 
 
 ## Usage
-There are two primary functions: spacer generation, and spacer evaluation
+There are two primary functions: spacer generation, and spacer evaluation. 
 
 #### Spacer generation
 This function will generate a number of spacers per given region of a specified reference genome. It can be set to target a set of genes by gene names, intergenic (non-coding) regions, as well as custom (user-specified) windows. 
