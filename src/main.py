@@ -13,6 +13,7 @@ from src.finder import get_target_region_for_gene, get_candidates_for_region, re
 from src.outputs import make_spacer_gen_output, make_eval_outputs
 from src.parse import extract_column_from_csv
 from src.bowtie import find_offtargets
+from src.filters import filter_non_unique_fingerprints, filter_re_sites, filter_homopolymers
 from src.advanced_parameters import SPACER_LENGTH, flex_base, flex_spacing
 
 def spacer_gen(args):
@@ -59,7 +60,7 @@ def spacer_gen(args):
 		if not region_type == 'custom':
 			print("Cannot do coding or noncoding spacer generation against a fasta file. Use a genbank input or use custom regions against this fasta. ")
 			return
-		record =SeqIO.read(Path(genome_fasta_file), "fasta")
+		record = SeqIO.read(Path(genome_fasta_file), "fasta")
 		genbank_id = record.id
 	genome = record.seq.upper()
 
@@ -97,17 +98,22 @@ def spacer_gen(args):
 		start_pct = 0
 		end_pct = 100
 
-	for region in regions:
+	for idx, region in enumerate(regions):
 		start = time.perf_counter()
 		print(f"Finding gRNA for \"{region['name']}\"")
 		[start_mark, end_mark] = get_target_region_for_gene(region, start_pct, end_pct)
 		candidates = get_candidates_for_region(genome, start_mark, end_mark, region['name'], GC_requirement)
+		print(f"Identified {len(candidates)} candidates, filtering them now...")
 		if region_type == 'coding':
 			if coding_spacer_direction not in ['N_to_C', 'C_to_N']:
 				print("Invalid 'coding_spacer_direction' parameter, see the valid inputs")
 				return
 			candidates = order_candidates_for_region(candidates, region, coding_spacer_direction)
 		
+		candidates = filter_re_sites(candidates)
+		candidates = filter_homopolymers(candidates)
+		candidates = filter_non_unique_fingerprints(candidates, genbank_id)
+
 		candidates = remove_offtarget_matches(genbank_id, region['name'], candidates, spacers_per_region, overlapping_spacers)
 		region['candidates'] = candidates
 		if len(candidates) > spacers_per_region:
@@ -115,10 +121,10 @@ def spacer_gen(args):
 
 		elapsed_time = round(time.perf_counter() - start, 2)
 		print(f"Identified {len(candidates)} spacers for {region['name']} in {elapsed_time} seconds")
-	make_spacer_gen_output(regions, os.path.join(output_path, 'spacer_gen_output'))
+		make_spacer_gen_output(region, 'spacer_gen_output.csv')
 
 def spacer_eval(args):
-	genbank_id = args['genbank_id']
+	genbank_ids = args['genbank_ids']
 	output_path = args['output_path']
 	email = args['email']
 	user_spacers = args['spacers']
@@ -126,9 +132,6 @@ def spacer_eval(args):
 	if not email or '@' not in email:
 		print("Please enter an email for NCBI API calls")
 		return
-
-	record = retrieve_annotation(genbank_id, email)
-	genome = record.seq.upper()
 	
 	spacers = [s for s in user_spacers if len(s) == SPACER_LENGTH]
 	print(f"Starting evaluation for {len(spacers)} spacers...")
@@ -136,30 +139,35 @@ def spacer_eval(args):
 	spacer_batch_unmod = []  # make unmodified copy of spacer recs for output
 	if flex_base:
 		for (index, spacer) in enumerate(spacers):
-			flexible_seq = spacer[:]
+			flexible_seq = spacer.upper()[:]
 			for i in range(flex_spacing-1, SPACER_LENGTH, flex_spacing):
 				flexible_seq = flexible_seq[:i] + 'N' + flexible_seq[i+1:]
-			spacer_record = SeqRecord(Seq(flexible_seq), id=f'spacer_{index+1}', description=genbankId)  # use 'description' to store ref_genome info
+			spacer_record = SeqRecord(Seq(flexible_seq), id=f'spacer_{index+1}', description=f'spacer_{index+1}')  # use 'description' to store ref_genome info
 			spacer_batch.append(spacer_record)
 			spacer_record_unmod = SeqRecord(Seq(spacer.upper()), id=f'spacer_{index + 1}',
-									  description=genbankId)  # unmodified spacer for output
+									  description=f'spacer_{index+1}')  # unmodified spacer for output
 			spacer_batch_unmod.append(spacer_record_unmod)
 	else:
 		for (index, spacer) in enumerate(spacers):
 			spacer_record = SeqRecord(Seq(spacer), id=f'spacer_{index + 1}',
-									  description=genbankId)  # use 'description' to store ref_genome info
+									  description=f'spacer_{index+1}')  # use 'description' to store ref_genome info
 			spacer_batch.append(spacer_record)
 			spacer_batch_unmod.append(spacer_record)
 
 	# Write the batch of candidate sequences to a fasta for bowtie2 to use
-	fasta_name = 'offtarget-check.fasta'
+	fasta_name = 'eval-spacers.fasta'
 	root_dir = Path(__file__).parent.parent
-	fasta_name = os.path.join(root_dir, 'assets', 'bowtie', genbank_id, fasta_name)
+	fasta_name = os.path.join(root_dir, 'assets', 'bowtie', fasta_name)
 	with open(fasta_name, 'w') as targets_file:
 		SeqIO.write(spacer_batch, targets_file, 'fasta')
 
-	output_location = find_offtargets(genbank_id, fasta_name)
-	make_eval_outputs(spacer_batch_unmod, output_location, genome, output_path)
+	output_locations = []
+	for genbank_id in genbank_ids:
+		record = retrieve_annotation(genbank_id, email, return_record=False)
+		output_locations.append(find_offtargets(genbank_id, fasta_name))
+
+	make_eval_outputs(spacer_batch_unmod, output_locations, email, output_path)
 
 	os.remove(fasta_name)
-	# os.remove(output_location)
+	for loc in output_locations:
+		os.remove(loc)

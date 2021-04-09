@@ -23,7 +23,7 @@ def candidates_for_seq(seq, descriptor, GC_requirement=[0,100]):
 		if nextPAM == -1 or (i+nextPAM+len(PAM_SEQ)+SPACER_LENGTH) > len(seq):
 			i += 10000000
 			break
-			
+		
 		targetSeq = seq[i+nextPAM+len(PAM_SEQ):i+nextPAM+len(PAM_SEQ)+SPACER_LENGTH]
 		GC_content = SeqUtils.GC(targetSeq)
 		if GC_content < GC_requirement[0] or GC_content > GC_requirement[1]:
@@ -58,18 +58,17 @@ def get_candidates_for_region(genome, start_mark, end_mark, name, GC_requirement
 	else:
 		search_offset = len(PAM_SEQ) + SPACER_LENGTH
 	
-	fw_search_seq = genome_seq[start_mark-search_offset:end_mark-search_offset]
-	rv_search_seq = genome_seq[start_mark+search_offset:end_mark+search_offset].reverse_complement()
-	
+	fw_search_seq = genome_seq[start_mark-search_offset:end_mark-search_offset + len(PAM_SEQ) + SPACER_LENGTH]
+	rv_search_seq = genome_seq[start_mark+INTEGRATION_SITE_DISTANCE:end_mark+search_offset].reverse_complement()
 	candidates = candidates_for_seq(fw_search_seq, name+'--fw', GC_requirement)
 	for c in candidates:
 		# the initial "location" here is the location in the search sequence, needs to be 
 		# placed in the genome location
-		c['location'] = start_mark - search_offset + c['location']
+		c['location'] = start_mark - search_offset + c['location'] + 1
 	rv_candidates = candidates_for_seq(rv_search_seq, name+'--rv', GC_requirement)
 	for c in rv_candidates:
 		# move back additional spacer length for the reverse oriented spacers
-		c['location'] = end_mark + search_offset - c['location'] - SPACER_LENGTH
+		c['location'] = end_mark + search_offset - c['location'] +1
 	candidates.extend(rv_candidates)
 	
 	for candidate in candidates:
@@ -77,36 +76,19 @@ def get_candidates_for_region(genome, start_mark, end_mark, name, GC_requirement
 			# for fw strand inserts, the fingerprint is downstream
 			fp_start = candidate['location'] + SPACER_LENGTH + INTEGRATION_SITE_DISTANCE - 20
 			fp_end = candidate['location'] + SPACER_LENGTH + INTEGRATION_SITE_DISTANCE
+			fp_seq = genome_seq[fp_start:fp_end]
 		else:
-			# for rv strand inserts, the fingerprint is upstream, but location is the END of the spacer
-			fp_start = candidate['location'] - INTEGRATION_SITE_DISTANCE - 20
-			fp_end = candidate['location'] - INTEGRATION_SITE_DISTANCE
+			# for rv strand inserts, the fingerprint is upstream
+			fp_start = candidate['location'] - SPACER_LENGTH - INTEGRATION_SITE_DISTANCE
+			fp_end = candidate['location'] - SPACER_LENGTH - INTEGRATION_SITE_DISTANCE + 20
+			fp_seq = genome_seq[fp_start:fp_end].reverse_complement()
 		name = candidate['name']
-		candidate['fp_seq'] = SeqRecord(genome_seq[fp_start:fp_end], id=name, name=name, description=name)
-	return candidates
+		candidate['fp_seq'] = SeqRecord(fp_seq, id=name, name=name, description=name)
 
-# def filter_non_unique_fingerprints(candidates):
-# 	temp_fasta_name = 'fp_check.fasta'
-# 	with open(temp_fasta_name, 'w') as temp_fasta:
-# 		SeqIO.write([c['fp_seq'] for c in candidates], temp_fasta, 'fasta')
-# 	cores = multiprocessing.cpu_count()
-# 	output_name = 'fp_check_out.sam'
-# 	align_command = 'bowtie2 -x {} -f {} -p {} -S {}'.format(GENOME_NAME, temp_fasta_name, cores-1, output_name)
-# 	subprocess.run(align_command, shell=True)
-#
-# 	filtered_candidates = []
-# 	sam_reads = []
-# 	with open(output_name, 'r') as sam_file:
-# 		reader = samReader(sam_file)
-# 		sam_reads = [r for r in reader]
-#
-# 	for c in candidates:
-# 		reads = [r for r in sam_reads if r.safename == c['name']]
-# 		if len(reads) == 1:
-# 			filtered_candidates.append(c)
-# 	os.remove(temp_fasta_name)
-# 	os.remove(output_name)
-# 	return filtered_candidates
+	genome_both_ways = genome.upper()+genome.reverse_complement().upper()
+	unique_candidates = [c for c in candidates if genome_both_ways.count(c["seqrec"].seq) == 1]
+	return unique_candidates
+
 
 def order_candidates_for_region(candidates, region, coding_spacer_direction):
 	is_fwd_strand_and_NtoC = coding_spacer_direction == 'N_to_C' and region['direction'] == 'fw'
@@ -184,6 +166,9 @@ def remove_offtarget_matches(genbank_id, name, candidates, minMatches, overlappi
 		fasta_name = name+'-candidates.fasta'
 		root_dir = Path(__file__).parent.parent
 		fasta_name = os.path.join(root_dir, 'assets', 'bowtie', genbank_id, fasta_name)
+		
+		os.makedirs( os.path.join(root_dir, 'assets', 'bowtie', genbank_id), exist_ok=True)
+
 		with open(fasta_name, 'w') as targets_file:
 			SeqIO.write(match_seqs, targets_file, 'fasta')
 
@@ -191,7 +176,7 @@ def remove_offtarget_matches(genbank_id, name, candidates, minMatches, overlappi
 
 		filtered_candidates = []
 		sam_reads = []
-		with open(output_location) as sam_file:
+		with open(output_location, 'r') as sam_file:
 			reader = samReader(sam_file)
 			sam_reads = [r for r in reader]
 

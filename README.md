@@ -13,9 +13,9 @@ There are two primary functions: spacer generation, and spacer evaluation
 
 #### Spacer generation
 This function will generate a number of spacers per given region of a specified reference genome. It can be set to target a set of genes by gene names, intergenic (non-coding) regions, as well as custom (user-specified) windows. 
-The function can be called by modifying variables within the `spacer_gen.py` file and running it with Python. Potential spacer candidates are filtered according user-specified parameters, as well as evaluated for genome-wide potential off-targets using bowtie2 sequence alignment. A csv will output in the specified directory containing valid spacers targeting the region with minimal off-target potential. 
+The function can be called by modifying variables within the `spacer_gen.py` file and running it with Python. Potential spacer candidates are filtered according to user-specified parameters, as well as evaluated for genome-wide potential off-targets using bowtie2 sequence alignment. A csv will output in the specified directory containing valid spacers targeting the region with minimal off-target potential. 
 
-Be aware that, depending on the given run parameters, each region can take 2-5 minutes on an ordinary personal computer, so it is not currently practical to run this code against thousands of genes in one run. 
+Be aware that, depending on the given run parameters, each region can take 2-5 minutes on a typical personal computer, so it may not be practical to run this code against thousands of genes in one run. 
 
 #### Spacer evalution
-This function utilizes bowtie2 sequence alignment to evaluate user-specified spacers for potential off-targets in the genome. The function can be called by modify the variables in `spacer_eval.py` and running with Python. A summary csv output file contains information on off-target potential for each provided spacer, and for each spacer where potential off-targets were found, a detailed text file with more information about these off-targets will also be generated. 
+This function utilizes bowtie2 sequence alignment to evaluate user-specified spacers for potential off-targets in the genome. The function can be called by modify the variables in `spacer_eval.py` and running with Python. A summary csv output file contains information on off-target potential for each provided spacer, and for each spacer a detailed text file with more information about these off-targets will also be generated. 

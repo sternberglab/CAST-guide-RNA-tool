@@ -17,7 +17,7 @@ def build(genbank_id):
 		return
 	
 	fasta_file = os.path.join(root_dir, 'assets', 'genbank', f'{genbank_id}.fasta')
-	build_command = f'bowtie2-build {fasta_file} {build_output_name} -q'
+	build_command = f'bowtie2-build {fasta_file} {build_output_name}'
 	subprocess.run(build_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def find_offtargets(genbank_id, fasta_name):
@@ -39,14 +39,12 @@ def find_offtargets(genbank_id, fasta_name):
 	# --rfg XX,1 : reference gap-open penalty of 50 and gap-extension penalty of 1
 	gap_option = f'--rdg {mismatch_threshold*100},1 --rfg {mismatch_threshold*100},1' if not allow_gaps else ''
 
-
 	cores = multiprocessing.cpu_count()
-	output_name = fasta_name.split('.')[0] + '-offtarget-matches.sam'
+	output_name = f"{fasta_name.split('.')[0]}-{genbank_id}-offtarget.sam"
 	output_location = os.path.join(root_dir, 'assets', 'bowtie', genbank_id, output_name)
 
 	root_dir = Path(__file__).parent.parent
 	index_location = os.path.join(root_dir, 'assets', 'bowtie', genbank_id, 'index')
-
-	align_command = f'bowtie2 -x {index_location} -a -f -t {fasta_name} -p {cores - 1} {gap_option} -S {output_location} --no-1mm-upfront --np 0 --n-ceil 5 --score-min L,-{6*mismatch_threshold+1},0 -N 0 -L 5 -i S,6,0 -D 6'
+	align_command = f'bowtie2 -x {index_location} -a -f -t {fasta_name} -p {cores - 1} {gap_option} -S {output_location} --no-1mm-upfront --np 0 --n-ceil 5 --score-min L,-{6*mismatch_threshold+1},0 -N 1 -L 11 -i S,6,0 -D 6 --no-unal'
 	subprocess.run(align_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 	return output_location

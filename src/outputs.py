@@ -1,36 +1,64 @@
 import os
 import csv
 from pathlib import Path
-from Bio.pairwise2 import format_alignment as f_align
+from tempfile import NamedTemporaryFile
 
+import boto3
+import botocore
+from Bio.pairwise2 import format_alignment as f_align
 from Bio import SeqIO, SeqRecord, Seq, SeqUtils, pairwise2
 from simplesam import Reader as samReader
 
+from src.genbank import retrieve_annotation
 from src.advanced_parameters import PAM_SEQ, SPACER_LENGTH, flex_base, flex_spacing
 
-def make_spacer_gen_output(regions, output_filename):
+S3_BUCKET = 'lab-script-resources'
+
+def make_spacer_gen_output(region, output_filename):
 	fieldnames = ['spacer_id', 'region', 'sequence', 'genomic_coordinate', 'GC_content', 'PAM', 'strand']
+	
+	root_dir = Path(__file__).parent.parent
+	temp_path = os.path.join(root_dir, output_filename)
+	#s3 = boto3.client('s3')
+	output_key = f"outputs/{output_filename}"
+	needsHeaders = False
+	try:
+		with open(temp_path, 'r') as check:
+			reader = csv.reader(check)
+			headers = next(reader)
+			if 'spacer_id' in headers:
+				needsHeaders = False
+	except FileNotFoundError:
+		needsHeaders = True
+	except botocore.exceptions.ClientError as e:
+		if e.response['Error']['Code'] == "404":
+			needsHeaders = True
 
-	spacer_id = 0
-	with open(f'{output_filename}.csv', 'w', newline='') as out_file:
-		writer = csv.DictWriter(out_file, fieldnames=fieldnames)
-		writer.writeheader()
-		for region in regions:
-			if 'candidates' in region:
-				for c in region['candidates']:
-					GC_content = SeqUtils.GC(c['seqrec'].seq)
+	with open(temp_path, 'a', newline='') as tmp:
+		writer = csv.DictWriter(tmp, fieldnames=fieldnames)
+		if needsHeaders:
+			writer.writeheader()
+			thing=True
 
-					row = {
-						'spacer_id': spacer_id,
-						'region': f"{region['name']} - ({region['start']}-{region['end']})",
-						'sequence': c['seqrec'].seq, 
-						'genomic_coordinate': c['location'],
-						'GC_content': GC_content,
-						'PAM': PAM_SEQ,
-						'strand': c['name'].split('--')[1][:2]
-					}
-					writer.writerow(row)
-					spacer_id += 1
+		spacer_num = 0
+		if 'candidates' in region:
+			for c in region['candidates']:
+				GC_content = SeqUtils.GC(c['seqrec'].seq)
+
+				row = {
+					'spacer_id': f"{spacer_num}",
+					'region': f"{region['name']}",
+					'sequence': c['seqrec'].seq, 
+					'genomic_coordinate': c['location'],
+					'GC_content': GC_content,
+					'PAM': PAM_SEQ,
+					'strand': c['name'].split('--')[1][:2]
+				}
+				writer.writerow(row)
+				spacer_num += 1
+
+	#s3.upload_file(temp_path, S3_BUCKET, output_key)
+	#os.remove(temp_path)
 	return
 
 def align_offtargets(spacer_seq, offtar_info):  # uses Bio.pairwise2, offtar_info is a list of 2 things
@@ -44,21 +72,40 @@ def align_offtargets(spacer_seq, offtar_info):  # uses Bio.pairwise2, offtar_inf
 	del items[-1]
 	return '\n'.join(items)+'\n'
 
-def make_eval_outputs(spacers, output_sam, genome, output_path):
-	genome_seq = genome.upper()
+def make_eval_outputs(spacers, output_sams, email, output_path):
+	sam_reads = []
+	for output_sam in output_sams:
+		genbank_id = output_sam.split('-')[-2]
+		record = retrieve_annotation(genbank_id, email)
+		genome_seq = record.seq
 
-	with open(output_sam) as sam_file:
-		reader = samReader(sam_file)
-		sam_reads = [r for r in reader]
+		with open(output_sam, 'r') as sam_file:
+			reader = samReader(sam_file)
+			file_reads = [r for r in reader]
+			for r in file_reads:
+				r['genbankId'] = genbank_id
+				if r.reverse:
+					pam = genome_seq[r.coords[-1]:r.coords[-1] + 2].upper()  # todo allow different PAM lengths
+					pam = pam.reverse_complement()
+					protospacer = genome_seq[r.coords[0] - 1:r.coords[-1]].upper()
+					protospacer = protospacer.reverse_complement()
+				else:
+					pam = genome_seq[r.coords[0] - 3:r.coords[0] - 1]
+					protospacer = genome_seq[r.coords[0] - 1:r.coords[-1]]
+				r['protospacer'] = protospacer
+				r['pam'] = pam
+			sam_reads += file_reads
 
 	spacer_output = []
 	for spacer in spacers:
 		reads = [r for r in sam_reads if r.safename == spacer.id]
+		reads = sorted(reads, key=lambda r: r.tags['XM'])
 		mismatch_list = []  # to get min/max mismatches
 		# if len(reads) == 1:
 		#     print(f"Spacer '{spacer.id}' has no potential off-targets")
 		#     spacer_match = reads[0].coords[0] if reads[0].reverse else reads[0].coords[-1]
 		spacer_match = 'No perfect match found'  # update if perfect match (true protospacer) is found
+
 		if len(reads) >= 1:
 			print(f"Spacer '{spacer.id}' has {len(reads)} potential match(es) - see output files for details")
 			with open(os.path.join(output_path, f'{spacer.id}_off_target.txt'), 'w') as text_out:
@@ -68,25 +115,19 @@ def make_eval_outputs(spacers, output_sam, genome, output_path):
 				proto_list = []
 				perfect_match = False
 				for i in reads:
-					if i.reverse:
-						pam = genome_seq[i.coords[-1]:i.coords[-1] + 2].upper()  # todo allow different PAM lengths
-						pam = pam.reverse_complement()
-						protospacer = genome_seq[i.coords[0] - 1:i.coords[-1]].upper()
-						protospacer = protospacer.reverse_complement()
-					else:
-						pam = genome_seq[i.coords[0] - 3:i.coords[0] - 1]
-						protospacer = genome_seq[i.coords[0] - 1:i.coords[-1]]
+					protospacer = i['protospacer']
+					pam = i['pam']
 					gapped_align = i.tags['XO'] > 0
 					proto_list.append([protospacer, gapped_align])
-					if protospacer == spacer.seq:
+					if str(protospacer) == str(spacer.seq):
 						perfect_match = True
 					flex_count = len(spacer.seq)//flex_spacing if flex_base else 0
 					mismatch_count = abs(i.tags['XM']) - flex_count if len(
 						protospacer) >= len(spacer.seq) else 'N/A'  # use XM, taking into account flexible bases
 					if perfect_match:
 						spacer_match = 'Perfect match(es) found'
-					text_out.write(f"\n{protospacer.upper()} "
-								   f"  Coordinates: {i.coords[0]}; PAM: {pam.upper()}; RevCom = {i.reverse}; "
+					text_out.write(f"\n{protospacer.upper()}\n"
+								   f"GenbankId: {i['genbankId']}; Coordinates: {i.coords[0]}; PAM: {pam.upper()}; RevCom = {i.reverse}; "
 								   f"Perfect Match = {str(perfect_match)}; Mismatches = {mismatch_count}; Gapped Alignment = {gapped_align}")
 					if mismatch_count != 'N/A':
 						mismatch_list.append(mismatch_count)

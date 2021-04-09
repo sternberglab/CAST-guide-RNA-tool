@@ -6,11 +6,11 @@ from src.main import spacer_gen
 output_path = './'
 
 # The number of spacers to generate per region
-spacers_per_region = 5
+spacers_per_region = 3
 
 # GC Content Filter - as a min and max percent of GC content allowed
 # Ex. GC_requirement = [40,60] ensures only spacers with GC content of 40% - 60% will be generated
-GC_requirement = [0, 100]
+GC_requirement = [40,60]
 
 # Preferences on overlapping spacers - one of "allowed", "avoid", "forbidden"
 # "allowed" will not manipulate ordering apart from other settings
@@ -28,9 +28,9 @@ overlapping_spacers = 'avoid'
 # The downloaded genbank files are cached locally in the assets folder, and will only
 # be downloaded from NCBI if not present
 # Ex. "CP001509.3"
-genbank_id = ''
+genbank_id = 'CP001509.3'
 # Email: only used for NCBI API calls, be polite!
-email = ''
+email = 'acreechristopher@gmail.com'
 
 # Genbank file is a path to a local genbank file
 # Must be a FULL genbank file for coding and noncoding modes, containing both the 
@@ -51,8 +51,8 @@ region_type = 'coding'
 
 # -------------- CODING REGION SETTINGS -----------------------------------#
 # Percent of each region to target, from N terminus to C terminus
-start_pct = 0
-end_pct = 100
+start_pct = 10
+end_pct = 50
 
 # How to prioritize choosing spacers in each coding region:
 # Must be either 'N_to_C' or 'C_to_N'
@@ -61,25 +61,29 @@ coding_spacer_direction = 'N_to_C'
 # Target locus tags: locus tags as known from the genbank file, referenced above
 # File *must* be a csv with a column named "locus_tags"
 # Ex. target_locus_tags_csv = 'C:\Users\Me\Documents\experiments\integrate2010\target_locus_tags.csv'
-target_locus_tags_csv = ''
+target_locus_tags_csv = './needed_regions.csv'
 
 
 # --------------- NONCODING REGION SETTINGS -------------------------------#
 # genome_boundary takes a single pair of coordinates, and will only target
 # intergenic regions that lie between the two values
 # Ex. noncoding_boundary = [13555, 20000]
-noncoding_boundary = []
+noncoding_boundary = [0,20000]
 
 # Restricts regions to sites that are "nonessential": those with the 
 # C terminus of a coding region on both ends. Either False or True
-nonessential_only = False
+nonessential_only = True
 
 
 # --------------- CUSTOM REGION SETTINGS ----------------------------------#
 # A filepath to a csv containing pairs of corrdinates for the reference sequence to generate spacers for
-# The CSV should have 2 columns with headers "start_ref" and "end_ref"
+# The CSV should have 3 columns with headers "genbank_id", start_ref" and "end_ref"
 # Ex. custom_regions_csv = 'C:\Users\Me\Documents\experiments\integrate2010\custom_regions.csv'
 custom_regions_csv = ''
+
+
+
+
 
 
 # Do not modify, this calls the function when run with 'python spacer_gen.py'
