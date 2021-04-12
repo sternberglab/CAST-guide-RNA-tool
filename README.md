@@ -11,6 +11,8 @@ Python dependencies can be installed with `pip install -r requirements.txt` run 
 ## Usage
 There are two primary functions: spacer generation, and spacer evaluation. 
 
+There are also advanced parameters. 
+
 #### Spacer generation
 This function will generate a number of spacers per given region of a specified reference genome. It can be set to target a set of genes by gene names, intergenic (non-coding) regions, as well as custom (user-specified) windows. 
 The function can be called by modifying variables within the `spacer_gen.py` file and running it with Python. Potential spacer candidates are filtered according to user-specified parameters, as well as evaluated for genome-wide potential off-targets using bowtie2 sequence alignment. A csv will output in the specified directory containing valid spacers targeting the region with minimal off-target potential. 
