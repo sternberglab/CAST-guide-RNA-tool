@@ -21,9 +21,9 @@ def spacer_gen(args):
 	email = args['email']
 	nonessential_only = args['nonessential_only']
 	output_path = args['output_path']
-	genbank_id = args['genbank_id']
-	genbank_file = args['genbank_file']
-	genome_fasta_file = args['genome_fasta_file']
+	genbank_ids = args['genbank_ids']
+	genbank_files = args['genbank_files']
+	genome_fasta_files = args['genome_fasta_files']
 	start_pct = args['start_pct']
 	end_pct = args['end_pct']
 	spacers_per_region = args['spacers_per_region']
@@ -41,28 +41,43 @@ def spacer_gen(args):
 		return
 
 	# Load genome data
-	if genbank_id:
+	genome_input_type = None
+	if len(genbank_ids):
 		if not email or '@' not in email:
 			print("Please enter an email for NCBI API calls")
 			return
-		record = retrieve_annotation(genbank_id, email)
-	elif genbank_file:
-		if not Path(genbank_file).exists():
-			print("Invalid genbank_file provided. Either leave it empty or provide a valid file path. ")
-			return
-		with open(genbank_file, 'r') as f:
-			record = SeqIO.read(Path(genbank_file), 'genbank')
-			genbank_id = record.id
-	elif genome_fasta_file:
-		if not Path(genome_fasta_file).exists():
-			print("Invalid genome_fasta_file provided. Either leave it empty or provide a valid file path. ")
-			return
+		genome_input_type = 'genbank_ids'
+		default_genome_id = genbank_ids[0]
+		record = retrieve_annotation(default_genome_id, email)
+		for genbank_id in genbank_ids:
+			retrieve_annotation(genbank_id, email, return_record=False)
+		genome_ids = genbank_ids
+
+	elif len(genbank_files):
+		for genbank_file in genbank_files:
+			if not Path(genbank_file).exists():
+				print("Invalid genbank_file provided. Either leave it empty or provide a valid file path. ")
+				return
+		genome_input_type = 'genbank_files'
+		default_genome_id = genbank_files[0]
+		record = SeqIO.read(Path(default_genome_id), 'genbank')
+		genome_ids = []
+		for genbank_file in genbank_files:
+			record = SeqIO.read(Path(default_genome_id), 'genbank')
+			genome_ids += [record.id]
+	elif genome_fasta_files:
+		for genome_fasta_file in genome_fasta_files:
+			if not Path(genome_fasta_file).exists():
+				print("Invalid genome_fasta_file provided. Either leave it empty or provide a valid file path. ")
+				return
 		if not region_type == 'custom':
 			print("Cannot do coding or noncoding spacer generation against a fasta file. Use a genbank input or use custom regions against this fasta. ")
 			return
-		record = SeqIO.read(Path(genome_fasta_file), "fasta")
-		genbank_id = record.id
-	genome = record.seq.upper()
+		genome_input_type = 'fasta_files'
+		genome_ids = []
+		for genome_fasta_file in genome_fasta_files:
+			record = SeqIO.read(Path(genome_fasta_file), "fasta")
+			genome_ids += [record.id]
 
 	print("Starting spacer search...")
 	# Generate coding regions for each region_type
@@ -76,6 +91,9 @@ def spacer_gen(args):
 			print(f"You must enter at least one valid locus tag identifier, ex. {all_genes[0]['name']}")
 			return
 		regions = target_genes
+		for r in regions:
+			r['genome_input_type'] = genome_input_type
+			r['genome_id'] = default_genome_id
 
 	if region_type == 'noncoding':
 		if len(noncoding_boundary) != 2:
@@ -84,6 +102,9 @@ def spacer_gen(args):
 		region_name = 'nonessential' if nonessential_only else 'noncoding'
 		all_noncoding = get_regions(record, region=region_name)
 		regions = [r for r in all_noncoding if r['end'] > noncoding_boundary[0] and r['start'] < noncoding_boundary[1]]
+		for r in regions:
+			r['genome_input_type'] = genome_input_type
+			r['genome_id'] = default_genome_id
 		start_pct = 0
 		end_pct = 100
 
@@ -93,8 +114,8 @@ def spacer_gen(args):
 			return
 		with open(Path(custom_regions_csv), 'r', encoding='utf-8-sig') as csv_file:
 			reader = csv.DictReader(csv_file)
-			custom_regions = [[int(r['start_ref']), int(r['end_ref'])] for r in reader]
-		regions = [{'name': f'custom-{index}', 'start': c[0], 'end': c[1], 'direction': 'fw'} for (index, c) in enumerate(custom_regions)]
+			custom_regions = [r for r in reader]
+		regions = [{'name': f'custom-{index}', 'start': int(c['start_ref']), 'end': int(c['end_ref']), 'direction': 'fw', 'genome_id': c['genome_id']} for (index, c) in enumerate(custom_regions)]
 		start_pct = 0
 		end_pct = 100
 
@@ -102,8 +123,16 @@ def spacer_gen(args):
 		start = time.perf_counter()
 		print(f"Finding gRNA for \"{region['name']}\"")
 		[start_mark, end_mark] = get_target_region_for_gene(region, start_pct, end_pct)
+		if genome_input_type == 'genbank_ids':
+			record = retrieve_annotation(region['genome_id'], email)
+		elif genome_input_type == 'genbank_files':
+			record = SeqIO.read(Path(region['genome_id']), 'genbank')
+		elif genome_input_type == 'fasta_files':
+			record = SeqIO.read(Path(region['genome_id']), "fasta")
+		genome = record.seq.upper()
+
 		candidates = get_candidates_for_region(genome, start_mark, end_mark, region['name'], GC_requirement)
-		print(f"Identified {len(candidates)} candidates, filtering them now...")
+		print(f"Identified {len(candidates)} candidates by PAM and GC content, filtering them now...")
 		if region_type == 'coding':
 			if coding_spacer_direction not in ['N_to_C', 'C_to_N']:
 				print("Invalid 'coding_spacer_direction' parameter, see the valid inputs")
@@ -112,9 +141,12 @@ def spacer_gen(args):
 		
 		candidates = filter_re_sites(candidates)
 		candidates = filter_homopolymers(candidates)
-		candidates = filter_non_unique_fingerprints(candidates, genbank_id)
+		for genome_id in genome_ids:
+			candidates = filter_non_unique_fingerprints(candidates, genome_id)
 
-		candidates = remove_offtarget_matches(genbank_id, region['name'], candidates, spacers_per_region, overlapping_spacers)
+		print(f"{len(candidates)} remain after filtering for re_sites, homopolymers, and non unique fingerprints")
+		for genome_id in genome_ids:
+			candidates = remove_offtarget_matches(genome_id, region['name'], candidates, spacers_per_region, overlapping_spacers, check_all=len(genome_ids) > 1)
 		region['candidates'] = candidates
 		if len(candidates) > spacers_per_region:
 			region['candidates'] = candidates[:spacers_per_region]

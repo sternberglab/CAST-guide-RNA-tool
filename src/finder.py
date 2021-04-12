@@ -51,7 +51,7 @@ def get_target_region_for_gene(gene, start_pct, end_pct):
 	return [start_mark, end_mark]
 	
 def get_candidates_for_region(genome, start_mark, end_mark, name, GC_requirement):
-	genome_seq = genome.upper()
+	genome_seq = genome
 
 	if offset:
 		search_offset = len(PAM_SEQ) + SPACER_LENGTH + INTEGRATION_SITE_DISTANCE
@@ -144,14 +144,14 @@ def choose_next_offtarget_batch(remaining_candidates, matches, overlapping_space
 	return to_check[:batch_size]
 
 
-def remove_offtarget_matches(genbank_id, name, candidates, minMatches, overlapping_spacers):	
+def remove_offtarget_matches(genbank_id, name, candidates, minMatches, overlapping_spacers, check_all=False):	
 	no_offtargets = []
 	untested = candidates.copy()
 
 	while len(no_offtargets) < minMatches and len(untested) > 0:
-		print(f"{len(no_offtargets)} valid spacers so far, testing more candidates for off-target activity... {len(untested)} candidates remain")
+		print(f"Testing candidates for off-target activity against {genbank_id}... {len(untested)} candidates remain")
 		# Use 10 as the batch size to check for bowtie off-target matches
-		test_candidates = choose_next_offtarget_batch(untested, no_offtargets, overlapping_spacers, 7)
+		test_candidates = choose_next_offtarget_batch(untested, no_offtargets, overlapping_spacers, len(untested) if check_all else 10)
 		# Get the candidate sequences to use, and
 		# make every 6th bp an N to allow for ambiguous matches
 		match_seqs = [c['seqrec'].upper() for c in test_candidates]
@@ -182,13 +182,13 @@ def remove_offtarget_matches(genbank_id, name, candidates, minMatches, overlappi
 
 		for c in test_candidates:
 			reads = [r for r in sam_reads if r.safename == c['name']]
-			if len(reads) == 1:
+			if len(reads) <= 1:
 				no_offtargets.append(c)
 			untested.remove(c)
 
 		os.remove(fasta_name)
 		os.remove(output_location)
 		# return once at least minMatches are found without off-targets
-		if len(no_offtargets) >= minMatches:
+		if len(no_offtargets) >= minMatches and not check_all:
 			return no_offtargets[:minMatches]
 	return no_offtargets
