@@ -4,7 +4,7 @@
 # Ex. Searching EColi for 10 sequences per coding regions
 # at 5 mismatch threshold takes ~3 minutes on a normal PC with allow_gaps = True
 # Not recommended for values of 8 or higher at the moment
-mismatch_threshold = 5
+mismatch_threshold = 4
 
 # Only relevant for noncoding spacer generation
 # Minimum basepairs length to qualify as an intergenic region
