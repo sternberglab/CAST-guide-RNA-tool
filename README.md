@@ -8,6 +8,8 @@ See [here](http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowt
 
 Python dependencies can be installed with `pip install -r requirements.txt` run in this directory. 
 
+Note: bowtie2 must be in the SYSTEM path, not just installed via conda. The script uses a new subprocess call to invoke bowtie, so bowtie needs to be available outside any virtual environments that it might be running in. 
+
 ## Usage
 There are two primary functions: spacer generation, and spacer evaluation. 
 

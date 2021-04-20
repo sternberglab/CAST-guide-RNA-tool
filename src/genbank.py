@@ -140,9 +140,8 @@ def basic_gene_info(gene, genes_metadata=None):
 def get_regions(genbank, region='coding'):
 	genes = [feat for feat in genbank.features if feat.type == 'gene']
 	genes_metadata = []
-	with open('EColi_genes.txt', 'r') as f:
-		reader = csv.DictReader(f, delimiter='\t')
-		genes_metadata = [r for r in reader]
+	# TODO: allow a generic input file here that has gene essentiality information
+	# since genbank does not by default
 	genes = [basic_gene_info(g, genes_metadata) for g in genes]
 	if region == 'noncoding' or region == 'nonessential':
 		genome = genbank.seq
