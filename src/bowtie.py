@@ -18,7 +18,10 @@ def build(genbank_id):
 	
 	fasta_file = os.path.join(root_dir, 'assets', 'genbank', f'{genbank_id}.fasta')
 	build_command = f'bowtie2-build {fasta_file} {build_output_name}'
-	subprocess.run(build_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+	try:
+		subprocess.run(build_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+	except Exception as e:
+		raise Exception(f'Error running bowtie: \n{e}')
 
 def find_offtargets(genbank_id, fasta_name):
 	root_dir = Path(__file__).parent.parent
@@ -46,5 +49,8 @@ def find_offtargets(genbank_id, fasta_name):
 	root_dir = Path(__file__).parent.parent
 	index_location = os.path.join(root_dir, 'assets', 'bowtie', genbank_id, 'index')
 	align_command = f'bowtie2 -x {index_location} -a -f -t {fasta_name} -p {cores - 1} {gap_option} -S {output_location} --no-1mm-upfront --np 0 --n-ceil 5 --score-min L,-{6*mismatch_threshold+1},0 -N 1 -L 11 -i S,6,0 -D 6 --no-unal'
-	subprocess.run(align_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+	try:
+		subprocess.run(align_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+	except Exception as e:
+		raise Exception(f'Error running bowtie: \n{e}')
 	return output_location
