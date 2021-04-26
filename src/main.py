@@ -178,7 +178,10 @@ def spacer_eval(args):
 		print("Please enter an email for NCBI API calls")
 		return
 	
-	spacers = [s for s in user_spacers if len(s) == SPACER_LENGTH]
+	if type(user_spacers) is dict:
+		spacers = [v for k,v in user_spacers.items() if len(v) == SPACER_LENGTH]
+	else:
+		spacers = [s for s in user_spacers if len(s) == SPACER_LENGTH]
 	print(f"Starting evaluation for {len(spacers)} spacers...")
 	spacer_batch = []
 	spacer_batch_unmod = []  # make unmodified copy of spacer recs for output
@@ -211,7 +214,7 @@ def spacer_eval(args):
 		record = retrieve_annotation(genbank_id, email, return_record=False)
 		output_locations.append(find_offtargets(genbank_id, fasta_name))
 
-	make_eval_outputs(spacer_batch_unmod, output_locations, email, output_path)
+	make_eval_outputs(spacer_batch_unmod, output_locations, email, output_path, user_spacers)
 
 	os.remove(fasta_name)
 	for loc in output_locations:

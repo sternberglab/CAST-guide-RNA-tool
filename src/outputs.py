@@ -72,7 +72,7 @@ def align_offtargets(spacer_seq, offtar_info):  # uses Bio.pairwise2, offtar_inf
 	del items[-1]
 	return '\n'.join(items)+'\n'
 
-def make_eval_outputs(spacers, output_sams, email, output_path):
+def make_eval_outputs(spacers, output_sams, email, output_path, user_spacers):
 	sam_reads = []
 	for output_sam in output_sams:
 		genbank_id = output_sam.split('-')[-2]
@@ -101,15 +101,19 @@ def make_eval_outputs(spacers, output_sams, email, output_path):
 		reads = [r for r in sam_reads if r.safename == spacer.id]
 		reads = sorted(reads, key=lambda r: r.tags['XM'])
 		mismatch_list = []  # to get min/max mismatches
-		# if len(reads) == 1:
-		#     print(f"Spacer '{spacer.id}' has no potential off-targets")
-		#     spacer_match = reads[0].coords[0] if reads[0].reverse else reads[0].coords[-1]
 		spacer_match = 'No perfect match found'  # update if perfect match (true protospacer) is found
 
 		if len(reads) >= 1:
-			print(f"Spacer '{spacer.id}' has {len(reads)} potential match(es) - see output files for details")
-			with open(os.path.join(output_path, f'{spacer.id}_off_target.txt'), 'w') as text_out:
-				text_out.write(f"Potential off-target sites for {spacer.id}")
+			spacer_name = spacer.id
+			if type(user_spacers) is dict:
+				for (name, seq) in user_spacers.items():
+					if seq.upper() == spacer.seq.upper():
+						spacer_name = name
+
+			print(f"Spacer '{spacer_name}' has {len(reads)} potential match(es) - see output files for details")
+			
+			with open(os.path.join(output_path, f'{spacer_name}_off_target.txt'), 'w') as text_out:
+				text_out.write(f"Potential off-target sites for {spacer_name}")
 				text_out.write("\n(Closer matches to protospacer listed first)")
 				text_out.write("\n-------------")
 				proto_list = []
@@ -152,9 +156,9 @@ def make_eval_outputs(spacers, output_sams, email, output_path):
 					text_out.write('\nIdentical protospacer(s) found')
 
 		else:
-			print(f"Warning - no matches, including protospacer, found for spacer '{spacer.id}'")
+			print(f"Warning - no matches, including protospacer, found for spacer '{spacer_name}'")
 
-		spacer_dict = {'name': spacer.id, 'sequence': spacer.seq, 'refseq': spacer.description,
+		spacer_dict = {'name': spacer_name, 'sequence': spacer.seq, 'refseq': spacer.description,
 					   'match_found': spacer_match,
 					   'offtar_count': len(reads),
 					   'mismatch_min': min(mismatch_list) if len(mismatch_list) > 0 else 'N/A',

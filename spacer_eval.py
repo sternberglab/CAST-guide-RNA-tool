@@ -3,7 +3,7 @@ from src.main import spacer_eval
 # An existing folder to put outputs in
 # Can be relative or absolute
 # Ex. 'C:\\Users\\Me\\Downloads', '../../Downloads'
-output_path = './'
+output_path = './outputs'
 
 # Genbank Accession number
 # The downloaded genbank files are cached locally in the assets folder, and will only
@@ -16,8 +16,11 @@ email = ''
 
 # List of spacers to evaluate for off-target matches
 # Each must be 32 basepairs in length, invalid lengths will be filtered out
-# Ex: =['AAAAATAAAAACAAAAAATAAAACAAAAAGTT', 'GGCGATAAAAACATTTAATAAAACAAAAAGTT']
-spacers = []
+# Ex: spacers = ['AAAAATAAAAACAAAAAATAAAACAAAAAGTT', 'GGCGATAAAAACATTTAATAAAACAAAAAGTT']
+# Alternatively, you can give a dictionary with names for each spacer
+# and these names will be used to create the output file names
+# Ex. spacers = {'Target1': 'AAAAATAAAAACAAAAAATAAAACAAAAAGTT', '2ndTarget': 'GGCGATAAAAACATTTAATAAAACAAAAAGTT'}
+spacers = {}
 
 # Do not modify, this calls the function when run with 'python spacer_eval.py'
 if __name__ == "__main__":
