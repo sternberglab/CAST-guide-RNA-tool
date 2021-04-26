@@ -3,6 +3,8 @@ from src.main import spacer_gen
 # Folder to put outputs in
 # Can be relative or absolute
 # Ex. 'C:\\Users\\Me\\Downloads', '../../Downloads'
+# Note that outputs to the 'spacer_gen_output.csv' will be APPENDED to existing entries
+# in that file, not overridden, in the case of repeat runs. 
 output_path = './'
 
 # The number of spacers to generate per region
@@ -35,7 +37,7 @@ overlapping_spacers = 'avoid'
 # of genbank id listed to identify coding and noncoding regions to generate
 # spacers for, though all files and genbank ids will be checked for 
 # off-target activity and bad ones filtered out
-# Ex. "CP001509.3"
+# Ex. ["CP001509.3"]
 genbank_ids = []
 # Email: only used for NCBI API calls, be polite!
 email = ''
@@ -84,16 +86,27 @@ nonessential_only = True
 
 
 # --------------- CUSTOM REGION SETTINGS ----------------------------------#
+# Custom regions should be defined either in the csv file, specifying what
+# regions (by refseq) in the input files should be used, 
+# OR
+# as custom sequences input in the 'custom_sequences' field
+# Leave the one not used empty
+
+
 # A filepath to a csv containing pairs of corrdinates for the reference sequence to generate spacers for
 # The CSV should have 3 columns with headers "genome_id", start_ref" and "end_ref"
 # The "genome_id" should exactly match one of the ids, genbank files, or fasta files
 # used in the matching field above
-# Ex. custom_regions_csv = 'C:\Users\Me\Documents\experiments\integrate2010\custom_regions.csv'
-custom_regions_csv = './custom_regions.csv'
+# Ex. custom_regions_csv = './custom_regions.csv'
+custom_regions_csv = ''
 
 
-
+# A list of sequences in which to generate spacers
+# NOTE: when using this setting, you might want to turn 'offset' in 'advanced_parameters.py' to False. 
+# See that setting for more details
+# Ex. custom_sequences = ['CTCTCTCCTACTCTCTCGTACTCTCTCTACTCTCTCTACTCTCTCTACTCTCTCTACTCTCTCTACTCTCTCTACTCTCTCCTACTCTCTCTACTCTCTCTACTCTCTCTACTCTCTCTACTCTCTCTACTCTCTCTACTCTCTCTACTCTCTCTACTCTCTCTACTCTCTCTA']
+custom_sequences = []
 
 # Do not modify, this calls the function when run with 'python spacer_gen.py'
 if __name__ == "__main__":
-	spacer_gen({"output_path": output_path, "genbank_files": genbank_files, "genome_fasta_files": genome_fasta_files, "nonessential_only": nonessential_only, "spacers_per_region": spacers_per_region, "GC_requirement": GC_requirement, "genbank_ids": genbank_ids, "email": email, "region_type": region_type, "overlapping_spacers": overlapping_spacers, "coding_spacer_direction": coding_spacer_direction, "start_pct": start_pct, "end_pct": end_pct, "target_locus_tags_csv": target_locus_tags_csv, "noncoding_boundary": noncoding_boundary, "custom_regions_csv": custom_regions_csv})
+	spacer_gen({"output_path": output_path, "genbank_files": genbank_files, "genome_fasta_files": genome_fasta_files, "nonessential_only": nonessential_only, "spacers_per_region": spacers_per_region, "GC_requirement": GC_requirement, "genbank_ids": genbank_ids, "email": email, "region_type": region_type, "overlapping_spacers": overlapping_spacers, "coding_spacer_direction": coding_spacer_direction, "start_pct": start_pct, "end_pct": end_pct, "target_locus_tags_csv": target_locus_tags_csv, "noncoding_boundary": noncoding_boundary, "custom_regions_csv": custom_regions_csv, "custom_sequences": custom_sequences})

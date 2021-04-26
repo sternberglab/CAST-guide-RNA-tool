@@ -58,7 +58,7 @@ def get_candidates_for_region(genome, start_mark, end_mark, name, GC_requirement
 	else:
 		search_offset = len(PAM_SEQ) + SPACER_LENGTH
 	
-	fw_search_seq = genome_seq[start_mark-search_offset:end_mark-search_offset + len(PAM_SEQ) + SPACER_LENGTH]
+	fw_search_seq = genome_seq[max(0,start_mark-search_offset):end_mark-search_offset + len(PAM_SEQ) + SPACER_LENGTH]
 	rv_search_seq = genome_seq[start_mark+INTEGRATION_SITE_DISTANCE:end_mark+search_offset].reverse_complement()
 	candidates = candidates_for_seq(fw_search_seq, name+'--fw', GC_requirement)
 	for c in candidates:
@@ -84,7 +84,6 @@ def get_candidates_for_region(genome, start_mark, end_mark, name, GC_requirement
 			fp_seq = genome_seq[fp_start:fp_end].reverse_complement()
 		name = candidate['name']
 		candidate['fp_seq'] = SeqRecord(fp_seq, id=name, name=name, description=name)
-
 	genome_both_ways = genome.upper()+genome.reverse_complement().upper()
 	unique_candidates = [c for c in candidates if genome_both_ways.count(c["seqrec"].seq) == 1]
 	return unique_candidates
@@ -147,7 +146,6 @@ def choose_next_offtarget_batch(remaining_candidates, matches, overlapping_space
 def remove_offtarget_matches(genbank_id, name, candidates, minMatches, overlapping_spacers, check_all=False):	
 	no_offtargets = []
 	untested = candidates.copy()
-
 	while len(no_offtargets) < minMatches and len(untested) > 0:
 		print(f"Testing candidates for off-target activity against {genbank_id}... {len(untested)} candidates remain")
 		# Use 10 as the batch size to check for bowtie off-target matches

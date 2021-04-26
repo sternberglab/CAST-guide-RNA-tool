@@ -37,9 +37,9 @@ def filter_non_unique_fingerprints(candidates, genbank_id):
 			else:
 				sam_reads[r.safename] += 1
 
-
 	for c in candidates:
-		if sam_reads[c['fp_seq'].id] == 1:
+		c_id = c['fp_seq'].id
+		if c_id not in sam_reads or sam_reads[c_id] <= 1:
 			filtered_candidates.append(c)
 	os.remove(temp_fasta_name)
 	os.remove(output_name)

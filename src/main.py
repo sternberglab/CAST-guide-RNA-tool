@@ -34,6 +34,7 @@ def spacer_gen(args):
 	region_type = args['region_type']
 	noncoding_boundary = args['noncoding_boundary']
 	custom_regions_csv = args['custom_regions_csv']
+	custom_sequences = args['custom_sequences']
 
 	# Check for required parameters
 	if region_type not in ['coding', 'noncoding', 'custom']:
@@ -109,27 +110,39 @@ def spacer_gen(args):
 		end_pct = 100
 
 	if region_type == 'custom':
-		if not Path(custom_regions_csv).exists():
-			print("Must input a valid filepath for the custom regions csv")
+		if len(custom_regions_csv):
+			if not Path(custom_regions_csv).exists():
+				print("Must input a valid filepath for the custom regions csv")
+				return
+			with open(Path(custom_regions_csv), 'r', encoding='utf-8-sig') as csv_file:
+				reader = csv.DictReader(csv_file)
+				custom_regions = [r for r in reader]
+			regions = [{'name': f'custom-{index}', 'start': int(c['start_ref']), 'end': int(c['end_ref']), 'direction': 'fw', 'genome_id': c['genome_id']} for (index, c) in enumerate(custom_regions)]
+		elif len(custom_sequences) > 0:
+			regions = [{'name': f'custom-{index}', 'start': 0, 'end': len(c), 'direction': 'fw', 'genome_id': None, 'sequence': c.upper()} for (index, c) in enumerate(custom_sequences)]
+		else:
+			print("No custom regions csv or custom sequences provided. Please fill in one of those fields")
 			return
-		with open(Path(custom_regions_csv), 'r', encoding='utf-8-sig') as csv_file:
-			reader = csv.DictReader(csv_file)
-			custom_regions = [r for r in reader]
-		regions = [{'name': f'custom-{index}', 'start': int(c['start_ref']), 'end': int(c['end_ref']), 'direction': 'fw', 'genome_id': c['genome_id']} for (index, c) in enumerate(custom_regions)]
 		start_pct = 0
 		end_pct = 100
 
 	for idx, region in enumerate(regions):
 		start = time.perf_counter()
 		print(f"Finding gRNA for \"{region['name']}\"")
-		[start_mark, end_mark] = get_target_region_for_gene(region, start_pct, end_pct)
-		if genome_input_type == 'genbank_ids':
-			record = retrieve_annotation(region['genome_id'], email)
-		elif genome_input_type == 'genbank_files':
-			record = SeqIO.read(Path(region['genome_id']), 'genbank')
-		elif genome_input_type == 'fasta_files':
-			record = SeqIO.read(Path(region['genome_id']), "fasta")
-		genome = record.seq.upper()
+
+		if 'sequence' in region and len(region['sequence']) >= 20:
+			genome = Seq(region['sequence'])
+			start_mark = 0
+			end_mark = len(genome)
+		else:
+			[start_mark, end_mark] = get_target_region_for_gene(region, start_pct, end_pct)
+			if genome_input_type == 'genbank_ids':
+				record = retrieve_annotation(region['genome_id'], email)
+			elif genome_input_type == 'genbank_files':
+				record = SeqIO.read(Path(region['genome_id']), 'genbank')
+			elif genome_input_type == 'fasta_files':
+				record = SeqIO.read(Path(region['genome_id']), "fasta")
+			genome = record.seq.upper()
 
 		candidates = get_candidates_for_region(genome, start_mark, end_mark, region['name'], GC_requirement)
 		print(f"Identified {len(candidates)} candidates by PAM and GC content, filtering them now...")
@@ -153,7 +166,7 @@ def spacer_gen(args):
 
 		elapsed_time = round(time.perf_counter() - start, 2)
 		print(f"Identified {len(candidates)} spacers for {region['name']} in {elapsed_time} seconds")
-		make_spacer_gen_output(region, 'spacer_gen_output.csv')
+		make_spacer_gen_output(region, os.path.join(output_path, 'spacer_gen_output.csv'))
 
 def spacer_eval(args):
 	genbank_ids = args['genbank_ids']
