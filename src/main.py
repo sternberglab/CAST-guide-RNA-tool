@@ -12,7 +12,7 @@ from src.genbank import retrieve_annotation, get_regions
 from src.finder import get_target_region_for_gene, get_candidates_for_region, remove_offtarget_matches, order_candidates_for_region
 from src.outputs import make_spacer_gen_output, make_eval_outputs
 from src.parse import extract_column_from_csv
-from src.bowtie import find_offtargets
+from src.bowtie import find_offtargets, build as bowtie_build
 from src.filters import filter_non_unique_fingerprints, filter_re_sites, filter_homopolymers
 from src.advanced_parameters import SPACER_LENGTH, flex_base, flex_spacing
 
@@ -69,8 +69,10 @@ def spacer_gen(args):
 	elif genome_fasta_files:
 		for genome_fasta_file in genome_fasta_files:
 			if not Path(genome_fasta_file).exists():
-				print("Invalid genome_fasta_file provided. Either leave it empty or provide a valid file path. ")
+				print(f"Invalid genome_fasta_file provided: {genome_fasta_file}. Either leave it empty or provide a valid file path. ")
 				return
+			without_filetype = genome_fasta_file[:-6].split('/')[-1]
+			bowtie_build(without_filetype, fasta_file=Path(genome_fasta_file).absolute())
 		if not region_type == 'custom':
 			print("Cannot do coding or noncoding spacer generation against a fasta file. Use a genbank input or use custom regions against this fasta. ")
 			return
@@ -170,6 +172,7 @@ def spacer_gen(args):
 
 def spacer_eval(args):
 	genbank_ids = args['genbank_ids']
+	fasta_files = args['fasta_files']
 	output_path = args['output_path']
 	email = args['email']
 	user_spacers = args['spacers']
@@ -213,6 +216,10 @@ def spacer_eval(args):
 	for genbank_id in genbank_ids:
 		record = retrieve_annotation(genbank_id, email, return_record=False)
 		output_locations.append(find_offtargets(genbank_id, fasta_name))
+	for genome_fasta_file in fasta_files:
+		without_filetype = genome_fasta_file[:-6].split('/')[-1]
+		bowtie_build(without_filetype, fasta_file=Path(genome_fasta_file).absolute())
+		output_locations.append(find_offtargets(without_filetype, fasta_name))
 
 	make_eval_outputs(spacer_batch_unmod, output_locations, email, output_path, user_spacers)
 

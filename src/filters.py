@@ -20,13 +20,15 @@ def filter_non_unique_fingerprints(candidates, genbank_id):
 	root_dir = Path(__file__).parent.parent
 	temp_fasta_name = 'fp_check.fasta'
 	with open(temp_fasta_name, 'w') as temp_fasta:
-		SeqIO.write([c['fp_seq'] for c in candidates], temp_fasta, 'fasta')
+		SeqIO.write([c['fp_seq'] for c in candidates if len(c['fp_seq'].seq) > 1], temp_fasta, 'fasta')
 	cores = multiprocessing.cpu_count()
 	output_name = 'fp_check_out.sam'
 	index_location = os.path.join(root_dir, 'assets', 'bowtie', genbank_id, 'index')
 	align_command = 'bowtie2 -x {} -k 2 -f {} -p {} -S {}'.format(index_location, temp_fasta_name, cores-1, output_name)
-	subprocess.run(align_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
+	try:
+		subprocess.run(align_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+	except Exception as e:
+		raise Exception(f'Error running bowtie: \n{e}')
 	filtered_candidates = []
 	sam_reads = {}
 	with open(output_name, 'r') as sam_file:

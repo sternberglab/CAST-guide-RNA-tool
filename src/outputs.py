@@ -131,7 +131,7 @@ def make_eval_outputs(spacers, output_sams, email, output_path, user_spacers):
 					if perfect_match:
 						spacer_match = 'Perfect match(es) found'
 					text_out.write(f"\n{protospacer.upper()}\n"
-								   f"GenbankId: {i['genbankId']}; Coordinates: {i.coords[0]}; PAM: {pam.upper()}; RevCom = {i.reverse}; "
+								   f"Genome: {i['genbankId']}; Coordinates: {i.coords[0]}; PAM: {pam.upper()}; RevCom = {i.reverse}; "
 								   f"Perfect Match = {str(perfect_match)}; Mismatches = {mismatch_count}; Gapped Alignment = {gapped_align}")
 					if mismatch_count != 'N/A':
 						mismatch_list.append(mismatch_count)
