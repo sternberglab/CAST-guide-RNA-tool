@@ -4,7 +4,7 @@ It utilizes the bowtie2 alignment algorithm for genome-wide off-target search.
 
 ## Installation
 This library requires Python >= 3.8, and a working installation of bowtie2 in the user's path. 
-See [here](http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2) for information on installing bowtie2. 
+See [here](http://bowtie-bio.sourceforge.net/bowtie2/manual.shtml#obtaining-bowtie-2) for information on installing bowtie2. Note that Windows machines will also need Perl installed and in their path to run bowtie2. 
 
 Python dependencies can be installed with `pip install -r requirements.txt` run in this directory. 
 
@@ -13,7 +13,9 @@ Note: bowtie2 must be in the SYSTEM path, not just installed via conda. The scri
 ## Usage
 There are two primary functions: spacer generation, and spacer evaluation. 
 
-There are also advanced parameters. 
+See the examples folder for some sample parameters. They should be copied to the appropriate file to run, not run on their own. 
+
+There are also advanced parameters in `src/advanced_parameters.py`, see comments there for more details. 
 
 #### Spacer generation
 This function will generate a number of spacers per given region of a specified reference genome. It can be set to target a set of genes by gene names, intergenic (non-coding) regions, as well as custom (user-specified) windows. 

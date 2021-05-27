@@ -24,7 +24,7 @@ def build(genbank_id, fasta_file=None):
 	try:
 		subprocess.run(build_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 	except Exception as e:
-		raise Exception(f'Error running bowtie: \n{e}')
+		raise Exception(f"Error running bowtie, see Installation notes in the README: \n{e}")
 
 def find_offtargets(genbank_id, fasta_name):
 	root_dir = Path(__file__).parent.parent
@@ -55,5 +55,5 @@ def find_offtargets(genbank_id, fasta_name):
 	try:
 		subprocess.run(align_command, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
 	except Exception as e:
-		raise Exception(f'Error running bowtie: \n{e}')
+		raise Exception(f'Error running bowtie, see Installation notes in the README: \n{e}')
 	return output_location

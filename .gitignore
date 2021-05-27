@@ -1,4 +1,5 @@
 *.txt
-*.csv
+/*.csv
 __pycache__
 assets/
+outputs/
