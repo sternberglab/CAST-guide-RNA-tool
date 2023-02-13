@@ -1,5 +1,5 @@
-# Sternberg Lab - INTEGRATE guide RNA tool 
-This is a tool for guide RNA design and off-target protospacer search for RNA-guided transposon (INTEGRATE) experiments, particularly for the Type I-F VchINTEGRATE system. 
+# Sternberg Lab - CAST guide RNA tool 
+This is a tool for guide RNA design and off-target protospacer search for RNA-guided CRISPR-transposon (CAST) experiments, particularly for the Type I-F VchCAST system. 
 It utilizes the bowtie2 alignment algorithm for genome-wide off-target search.
 
 ## Installation
